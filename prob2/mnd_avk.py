@@ -38,7 +38,17 @@ for filename in os.listdir(folder_path):
 # Kombiner dataene for alle aksjer i én DataFrame
 returns_df = pd.DataFrame(returns_data)
 
-# Lagre resultatene i en CSV-fil
+# Lagre de månedlige avkastningene i en CSV-fil
 returns_df.to_csv('mnd_avk_aksjer.csv')
 
+# Beregn kovariansmatrisen
+cov_matrix = returns_df.cov()
+
+# Lagre kovariansmatrisen i en ny CSV-fil
+cov_matrix.to_csv('mnd_avk_cov_matrix.csv')
+
 print("Månedlige avkastninger er beregnet og lagret i 'mnd_avk_aksjer.csv'.")
+print(returns_df)
+print("Kovariansmatrisen er beregnet og lagret i 'mnd_avk_cov_matrix.csv'.")
+print(cov_matrix)
+
