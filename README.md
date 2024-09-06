@@ -40,7 +40,7 @@ python3 -m venv env
 
 #### På Windows:
 ```bash
-.\env\Scripts ctivate
+.\env\Scripts\activate
 ```
 
 #### På macOS/Linux:
@@ -58,16 +58,22 @@ pip install -r requirements.txt
 
 ### Trinn 5: Generere eller oppdatere `requirements.txt`
 
-For å sikre at alle bruker samme avhengigheter, kan du generere eller oppdatere `requirements.txt` når nye pakker legges til.
+For å sikre at alle bruker samme avhengigheter, kan du generere eller oppdatere `requirements.txt` før du pusher koden.
+Husk å gå til rot-mappen før du kjører disse kommandoene. Det er det "requirements.txt" filen er lagret og bør lagres. 
 
 1. Installer `pipreqs` for å generere filen automatisk:
    ```bash
    pip install pipreqs
    ```
 
-2. Generer eller oppdater `requirements.txt`:
+2. Generer eller oppdater `requirements.txt` med pakker som kun brukes i nåværende kodefiler:
    ```bash
    pipreqs . --force
+   ```
+
+2. Generer eller oppdater `requirements.txt` med pakker som er innstallert i nåværende virtuelle miljø:
+   ```bash
+   pip freeze > requirements.txt
    ```
 
 ### Trinn 6: Kjøre analysen
@@ -88,7 +94,7 @@ Når du har hentet siste endringer fra GitHub og `requirements.txt` har blitt op
 
    - **På Windows**:
      ```bash
-     .\env\Scripts ctivate
+     .\env\Scripts\activate
      ```
 
    - **På macOS/Linux**:
