@@ -1,0 +1,14 @@
+# Ignorer virtuelle miljøer
+env/
+
+# Ignorer Python cache-filer
+__pycache__/
+*.pyc
+*.pyo
+
+# Ignorer VSCode-innstillinger (valgfritt)
+.vscode/
+
+# Ignorer systemspesifikke filer (valgfritt)
+.DS_Store  # macOS
+Thumbs.db  # Windows
