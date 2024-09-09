@@ -1,5 +1,4 @@
 # Evolutionary-AI Portfolio
-## Group 9
 
 ## Forutsetninger
 
@@ -7,7 +6,7 @@ Før du starter, sørg for at du har følgende installert:
 
 - [Python 3.8+](https://www.python.org/downloads/)
 - [Visual Studio Code](https://code.visualstudio.com/)
-- Git for versjonskontroll (anbefalt, men ikke påkrevd)
+- Git for versjonskontroll
 
 ## Oppsett av utviklingsmiljø
 
@@ -101,7 +100,7 @@ Ctrl + C
 ### Trinn 5: Oppdatere avhengigheter `requirements.txt` før git push
 
 For å sikre at alle bruker samme avhengigheter, kan du generere eller oppdatere `requirements.txt` før du pusher koden.
-Husk å gå til rot-mappen før du kjører disse kommandoene. Det er det "requirements.txt" filen er lagret og bør lagres. 
+Husk å gå til rot-mappen før du kjører disse kommandoene. Det er der "requirements.txt" filen er lagret og bør lagres. 
 
 Generer eller oppdater `requirements.txt` med pakker som er innstallert i nåværende virtuelle miljø:
 ```bash
