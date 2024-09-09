@@ -47,7 +47,7 @@ python3 -m venv env
 source env/bin/activate
 ```
 
-### Trinn 4: Oppdatere avhengigheter `requirements.txt` etter git pull
+### Trinn 4: Innstallere avhengigheter fra `requirements.txt` etter git pull
 
 Etter at det virtuelle miljøet er aktivert, installer de nødvendige pakkene fra `requirements.txt`:
 ```bash
@@ -63,24 +63,22 @@ Problem 2:
 cd prob2/2.prob2_kode
 ```
 
-2. Beregne månedlig avkastning og skrive ut til en csv fil som heter "mnd_avk_aksjer.csv" (overskriver hvis filen finnes i mappen fra før): 
+2. Beregne månedlig avkastning og skrive ut til csv-fil "mnd_avk_aksjer.csv" (overskriver hvis filen finnes i mappen fra før): 
 ```bash
 python prob2/2.prob2_kode/2.1beregn_mnd_avk.py
 ```
 
-3. Beregne kovariansmatrise og skrive ut til en csv filen som heter "mnd_avk_cov_matrix.csv"
-(overskriver hvis filen finnes i mappen fra før): 
+3. Beregne kovariansmatrise og skrive ut til csv-fil "mnd_avk_cov_matrix.csv" (overskriver hvis filen finnes i mappen fra før): 
 ```bash
 python prob2/2.prob2_kode/2.2beregn_kovarians_matrix.py
 ```
 
-4. Kjør ep og skrive ut til en csv filen som heter "3.3ep.csv"
-(overskriver hvis filen finnes i mappen fra før): 
+4. Kjør ep og skrive ut til csv-fil "3.3ep.csv" (overskriver hvis filen finnes i mappen fra før): 
 ```bash
 python prob2/2.prob2_kode/2.3ep.py
 ```
 
-5. Kjør kode for å visualisere csv-filene ved å starte en server: 
+5. Generer html-fil med tabeller av csv-filene: 
 ```bash
 python prob2/4.prob2_visual/4.1visual.py
 ```
