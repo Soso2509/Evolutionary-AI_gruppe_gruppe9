@@ -81,7 +81,7 @@ python prob2/2.prob2_kode/2.3ep.py
 ```bash
 python prob2/4.prob2_visual/4.1visual.py
 ```
-
+6. Start server og vis den genererte html filen
 Naviger til riktig mappe: 
 ```bash
 cd prob2/4.prob2_visual/
@@ -92,7 +92,7 @@ Start server:
 python -m http.server 8000                              
 ```
 
-Åpne nettlser og gå til følgende lenke for å åpne den generert html-filen:
+Åpne nettleser og gå til følgende lenke for å åpne den generert html-filen:
 ```bash
 http://localhost:8000/prob2/4.prob2_visual/aksje_avkastning_sorterbar.html                          
 ```
@@ -118,4 +118,42 @@ Når du er ferdig med å jobbe, kan du deaktivere det virtuelle miljøet ved å 
 ```bash
 deactivate
 ```
+
+### Trinn 9: Oppdatere `main`-grenen med endringer fra en annen gren
+
+Følg disse trinnene for å slå sammen endringene fra en vilkårlig gren inn i `main`-grenen:
+
+1. **Sjekk ut den grenen du vil slå sammen, og push eventuelle endringer til det eksterne repoet:**
+
+   ```bash
+   git checkout <din-gren>
+   git push origin <din-gren>
+   ```
+
+2. **Bytt til `main`-grenen:**
+
+   ```bash
+   git checkout main
+   ```
+
+3. **Trekk ned de nyeste endringene fra det eksterne repoet på `main`:**
+
+   ```bash
+   git pull origin main
+   ```
+
+4. **Slå sammen endringene fra din gren inn i `main`:**
+
+   ```bash
+   git merge <din-gren>
+   ```
+
+   Hvis det oppstår sammenslåingskonflikter, må du løse dem manuelt, legge til endringene, og deretter fortsette sammenslåingen.
+
+5. **Push de oppdaterte endringene til `main`-grenen i det eksterne repoet:**
+
+   ```bash
+   git push origin main
+   ```
+
 
