@@ -153,3 +153,10 @@ print("\nBeste kombinasjon funnet")
 print(f"Kombinasjonsnummer: {best_combination_number}/{total_combinations}")
 print(f"Sharpe-ratio: {best_sharpe}")
 print(f"Populasjonsstørrelse: {best_combination[0]}, Antall generasjoner: {best_combination[1]}, Mutasjonsrate: {best_combination[2]}")
+print(f"Beste porteføljevekter: {best_portfolio}")
+
+# Lagre den beste porteføljen til en CSV-fil
+best_portfolio_df = pd.DataFrame([best_portfolio], columns=returns_df.columns)
+best_portfolio_df.to_csv(os.path.join(script_dir, '../3.prob2_output/3.4best_portfolio.csv'), index=False)
+
+print(f"Beste portefølje lagret i '3.4best_portfolio.csv'")
