@@ -87,12 +87,17 @@ python prob2/4.prob2_visual/4.1visual.py
 
 Naviger til riktig mappe: 
 ```bash
-cd prob2/4.prob2_visual/output/
+cd prob2/4.prob2_visual/
 ```
 
 Start server: 
 ```bash
 python -m http.server 8000                              
+```
+
+Åpne nettlser og gå til følgende lenke for å åpne den generert html-filen:
+```bash
+http://localhost:8000/prob2/4.prob2_visual/aksje_avkastning_sorterbar.html                          
 ```
 
 Avslutt server: 

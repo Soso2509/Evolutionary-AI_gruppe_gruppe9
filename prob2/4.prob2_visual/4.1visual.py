@@ -11,7 +11,8 @@ def load_data_from_folder(folder_path):
             try:
                 # Les CSV-filen uten å anta at første kolonne er datoer
                 df = pd.read_csv(file_path)
-                print(df)
+                print(f"Innholdet i filen '{filename}':")
+                print(df)  # Skriv ut innholdet i filen
                 all_data.append((filename, df))  # Lagre filnavnet og dataen
                 print(f"Lastet inn data fra fil: {file_path}")
             except Exception as e:
@@ -129,16 +130,15 @@ def generate_html_with_sortable_tables(data_list, output_dir):
 
 # Hoveddel: Kjør visualiseringen og generer HTML-side
 if __name__ == '__main__':
-    # Definer roten av prosjektet
-    project_root = r'C:\Users\Sultan Avtajev\OneDrive\Desktop\Kode-prosjekter\acit4610\Evolutionary-AI_gruppe_gruppe9'
-    print(f"Prosjektrot: {project_root}")
+    # Hent prosjektets rotmappe (der skriptet kjører fra)
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # Gå ett nivå opp fra 4.prob2_visual
     
-    # Definer stien til 'output'-mappen der HTML-filen blir lagret
-    output_dir = os.path.join(project_root, 'prob2', '4.prob2_visual', 'output')
+    # Definer relative stier for 'output'-mappen der HTML-filen blir lagret
+    output_dir = os.path.join(project_root, '4.prob2_visual')
     print(f"HTML-filen vil bli lagret i: {output_dir}")
 
-    # Definer stien til mappen der CSV-filene er lagret
-    folder_path = os.path.join(project_root, 'prob2', '3.prob2_output')
+    # Definer relative stier til mappen der CSV-filene er lagret
+    folder_path = os.path.join(project_root, '3.prob2_output')
     print(f"Laster CSV-filer fra: {folder_path}")
 
     # Last inn data fra alle CSV-filer i mappen
