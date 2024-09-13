@@ -1,6 +1,7 @@
 import os
 import numpy as np
 import pandas as pd
+from itertools import product
 
 # Finn stien til dette skriptet (der filen kjører fra)
 script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -19,9 +20,6 @@ num_assets = len(expected_returns)  # Antall aksjer i porteføljen
 
 # Last inn kovariansmatrisen fra CSV-filen du allerede har generert
 cov_matrix = pd.read_csv(cov_matrix_file, index_col=0).values
-
-# Definer risikofri rente (f.eks. 2% årlig, 0.02)
-risk_free_rate = 0.02 / 12  # For månedlig risikofri rente
 
 
 # Funksjon for å beregne porteføljens forventede avkastning og standardavvik (risiko)
@@ -48,10 +46,7 @@ def generate_portfolio(num_assets):
 
 # Funksjon for å generere en populasjon av porteføljer
 def generate_population(pop_size, num_assets):
-    population = []
-    for _ in range(pop_size):
-        population.append(generate_portfolio(num_assets))
-    return np.array(population)
+    return np.array([generate_portfolio(num_assets) for _ in range(pop_size)])
 
 
 # Funksjon for å mutere porteføljer
@@ -63,151 +58,90 @@ def mutate_portfolio(portfolio, mutation_rate=0.1):
     return mutated_portfolio
 
 
-# Funksjon for å velge de beste porteføljene
-def select_best(population, fitness_scores, num_to_select):
-    selected_indices = np.argsort(fitness_scores)[-num_to_select:]  # Velger de med høyest fitness
-    return population[selected_indices]
+# Funksjon for å kjøre basic ES og returnere sharpe ratio og parametere
+def run_es_algorithm(pop_size, num_generations, mutation_rate, risk_free_rate):
+    population = generate_population(pop_size, num_assets)
+    best_sharpe_ratio = -np.inf
+    best_portfolio = None
 
-
-def mutate_portfolio_with_strategy(portfolio, strategy_params):
-    mutation = np.random.normal(0, strategy_params, len(portfolio))
-    mutated_portfolio = portfolio + mutation
-    mutated_portfolio = np.clip(mutated_portfolio, 0, 1)
-    mutated_portfolio /= np.sum(mutated_portfolio)
-    return mutated_portfolio
-
-
-def recombine_parents(parent1, parent2):
-    alpha = np.random.random()  # Random weight for blending
-    child = alpha * parent1 + (1 - alpha) * parent2
-    child /= np.sum(child)  # Normalize weights
-    return child
-
-
-def evolve_strategy_params(strategy_params):
-    return strategy_params * np.exp(np.random.normal(0, 0.1))  # Adjust mutation rate with log-normal distribution
-
-
-def select_best_from_pool(parents, offspring, fitness_scores_parents, fitness_scores_offspring):
-    combined_population = np.concatenate([parents, offspring])
-    combined_fitness = np.concatenate([fitness_scores_parents, fitness_scores_offspring])
-    selected_indices = np.argsort(combined_fitness)[-len(parents):]
-    return combined_population[selected_indices]
-
-
-def evolutionary_strategy(expected_returns, cov_matrix, population_size, num_generations, risk_free_rate, mutation_rate=0.1):
-    num_assets = len(expected_returns)
-    
-    # Start with a population of portfolios and strategy parameters (mutation rates)
-    population = generate_population(population_size, num_assets)
-    strategy_params = np.random.random(population_size) * mutation_rate  # Initialize mutation rates for each portfolio
-    
     for generation in range(num_generations):
-        # Calculate fitness for each portfolio
-        fitness_scores = np.array([fitness_function(p, expected_returns, cov_matrix, risk_free_rate) for p in population])
-        
-        # Select the best portfolios
-        num_to_select = population_size // 2
-        best_portfolios = select_best(population, fitness_scores, num_to_select)
-        best_strategy_params = strategy_params[np.argsort(fitness_scores)[-num_to_select:]]
-        
-        # Generate offspring using recombination
-        offspring = []
-        offspring_strategy_params = []
-        for _ in range(num_to_select):
-            parent1, parent2 = np.random.choice(best_portfolios, size=2, replace=False)
-            child = recombine_parents(parent1, parent2)
-            child_strategy_param = (best_strategy_params[0] + best_strategy_params[1]) / 2  # Blend strategy params
-            offspring.append(child)
-            offspring_strategy_params.append(child_strategy_param)
-        
-        # Mutate offspring portfolios and update strategy parameters
-        offspring = [mutate_portfolio_with_strategy(p, sp) for p, sp in zip(offspring, offspring_strategy_params)]
-        offspring_strategy_params = [evolve_strategy_params(sp) for sp in offspring_strategy_params]
-        
-        # Combine parents and offspring and select the best for the next generation
-        fitness_scores_offspring = np.array([fitness_function(p, expected_returns, cov_matrix, risk_free_rate) for p in offspring])
-        population = select_best_from_pool(best_portfolios, offspring, fitness_scores, fitness_scores_offspring)
-        strategy_params = np.concatenate([best_strategy_params, offspring_strategy_params])
-    
-    # Return the best portfolio
-    final_fitness_scores = np.array([fitness_function(p, expected_returns, cov_matrix, risk_free_rate) for p in population])
-    best_portfolio = population[np.argmax(final_fitness_scores)]
-    
-    return best_portfolio, np.max(final_fitness_scores)
+        new_population = [mutate_portfolio(population[np.random.randint(pop_size)], mutation_rate) for _ in
+                          range(pop_size)]
+        population = np.array(new_population)
+
+        fitness_scores = np.array(
+            [fitness_function(ind, expected_returns, cov_matrix, risk_free_rate) for ind in population])
+        best_fitness_index = np.argmax(fitness_scores)
+
+        generation_best_sharpe_ratio = fitness_scores[best_fitness_index]
+        generation_best_portfolio = population[best_fitness_index]
+
+        if generation_best_sharpe_ratio > best_sharpe_ratio:
+            best_sharpe_ratio = generation_best_sharpe_ratio
+            best_portfolio = generation_best_portfolio
+
+        generation_best_expected_return, generation_best_portfolio_stddev = portfolio_performance(
+            generation_best_portfolio, expected_returns, cov_matrix)
+        print(f"Population Size: {pop_size}, Generations: {num_generations}, Mutation Rate: {mutation_rate}")
+        print(f"Generation {generation + 1}: Best Sharpe Ratio = {generation_best_sharpe_ratio:.4f}, "
+              f"Expected Return = {generation_best_expected_return:.4f}, "
+              f"Portfolio Std Dev = {generation_best_portfolio_stddev:.4f}")
+
+    return best_portfolio, best_sharpe_ratio
 
 
+# Parametere å teste
+population_sizes = [20, 50, 100]
+generation_counts = [50, 100, 200]
+mutation_rates = [0.01, 0.05, 0.1]
+risk_free_rate = 0.02 / 12
 
-# Parameterområder for testing
-population_sizes = [50, 100, 150, 200, 250, 300]  # Test med forskjellig populasjon
-generation_counts = [50, 100, 150, 200, 250, 300]  # Test med forskjellige generasjoner
-mutation_rates = [0.01, 0.05, 0.1, 0.15, 0.20]  # Test med forskjellige mutasjonsrate
-
-# Beregn totalt antall kombinasjoner
-total_combinations = len(population_sizes) * len(generation_counts) * len(mutation_rates)
-
-# Skriv ut antall kombinasjoner
-print(f"Antall kombinasjoner til testing: {total_combinations}")
-
-# Variabel for å holde styr på den beste kombinasjonen
+# Inisialiserer "best" variabler som vil fylles med de beste parameterne underveis
 best_sharpe = -np.inf
 best_combination = None
-best_combination_number = None  # Variabel for å holde styr på det beste kombinasjonsnummeret
-
-# Liste for å samle inn alle resultater
+best_combination_number = -1
+combination_counter = 1
+total_combinations = len(population_sizes) * len(generation_counts) * len(mutation_rates)
 results = []
 
-# Test alle kombinasjoner
-combination_counter = 1  # Teller for å holde styr på hvilken kombinasjon vi er på
-
+# Kjører gjennom ES slik at alle kombinasjonene av "parametere å teste" kan få sin gjennomgang. Tre for loops er alt som trengs :|
 for pop_size in population_sizes:
     for gen_count in generation_counts:
         for mut_rate in mutation_rates:
             print(
                 f"Kjører kombinasjon {combination_counter}/{total_combinations}: pop_size={pop_size}, gen_count={gen_count}, mut_rate={mut_rate}")
 
-            # Kjør algoritmen med den nåværende kombinasjonen av parametere
-            best_portfolio, sharpe_ratio = evolutionary_strategy(expected_returns, cov_matrix, pop_size, gen_count,
-                                                                    risk_free_rate, mut_rate)
+            # Kjører ES funksjonen med de nåværende parameterne
+            best_portfolio, sharpe_ratio = run_es_algorithm(pop_size, gen_count, mut_rate, risk_free_rate)
 
             print(f"Sharpe-ratio for kombinasjon {combination_counter}/{total_combinations}: {sharpe_ratio}")
 
-            # Lagre resultatene i listen, inkludert kombinasjonsnummer
+            # Lagrer alle verdiene for hver iterasjon i "results" slik at det senere kan accesses
             results.append({
-                'combination_number': combination_counter,  # Legg til kombinasjonsnummer
+                'combination_number': combination_counter,
                 'pop_size': pop_size,
                 'gen_count': gen_count,
                 'mut_rate': mut_rate,
-                'sharpe_ratio': sharpe_ratio
+                'sharpe_ratio': sharpe_ratio,
+                'best_portfolio_weights': best_portfolio.tolist()
+
             })
 
-            # Lagre den beste kombinasjonen
+            # Om nåværende iterasjon har bedre sharpe ratio enn det som er registrert atm så skal kombinasjonen av test parameter og kombinasjons nr. oppdateres til det nåværende
             if sharpe_ratio > best_sharpe:
                 best_sharpe = sharpe_ratio
                 best_combination = (pop_size, gen_count, mut_rate)
-                best_combination_number = combination_counter  # Lagre nummeret for den beste kombinasjonen
+                best_combination_number = combination_counter
 
-            # Oppdater kombinasjonsnummeret
+            # NEXT combination! Back to the top of the loop now
             combination_counter += 1
 
-# Konverter resultatene til en DataFrame
-results_df = pd.DataFrame(results)
+# Output the best results
+print("\nBest Sharpe Ratio:", best_sharpe)
+print("Best Parameters:", best_combination)
+print("Best Combination Number:", best_combination_number)
+print("Best Portfolio Weights:", best_portfolio)
 
-# Lagre resultatene i en CSV-fil, inkludert kombinasjonsnummer
-results_df.to_csv(results_file, index=False)
-
-# Resultat
-print("\nBeste kombinasjon funnet")
-print(f"Kombinasjonsnummer: {best_combination_number}/{total_combinations}")
-print(f"Sharpe-ratio: {best_sharpe}")
-print(
-    f"Populasjonsstørrelse: {best_combination[0]}, Antall generasjoner: {best_combination[1]}, Mutasjonsrate: {best_combination[2]}")
-print(f"Beste porteføljevekter: {best_portfolio}")
-
-# Lagre den beste porteføljen til en CSV-fil
 best_portfolio_df = pd.DataFrame([best_portfolio], columns=returns_df.columns)
-best_portfolio_df.to_csv(os.path.join(script_dir, '../3.prob2_output/3.3bep_best_portfolio.csv'), index=False)
-
-print(f"Beste portefølje lagret i '3.3bep_best_portfolio.csv'")
-
-
+best_portfolio_df.to_csv(os.path.join(script_dir, '../3.prob2_output/3.5bes_best_portfolio.csv'), index=False)
+print(f"\nBeste portefølje lagret i '3.5bes_best_portfolio.csv'")
