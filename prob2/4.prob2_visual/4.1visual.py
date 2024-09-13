@@ -4,6 +4,7 @@ import os
 # Last inn dataene fra hver CSV-fil i en mappe og returner en liste med dataframes og filnavn
 def load_data_from_folder(folder_path):
     all_data = []
+    expected_files = ['3.4aep.csv', '3.4aep_best_portfolio.csv']  # Legg til de nye filene her
     
     for filename in os.listdir(folder_path):
         if filename.endswith(".csv"):
@@ -12,11 +13,19 @@ def load_data_from_folder(folder_path):
                 # Les CSV-filen uten å anta at første kolonne er datoer
                 df = pd.read_csv(file_path)
                 print(f"Innholdet i filen '{filename}':")
-                print(df)  # Skriv ut innholdet i filen
+                print(df.head())  # Skriv ut de første radene i filen
                 all_data.append((filename, df))  # Lagre filnavnet og dataen
-                print(f"Lastet inn data fra fil: {file_path}")
+                print(f"Lastet inn data fra fil: {file_path}\n")
             except Exception as e:
                 print(f"En feil oppstod ved lasting av {file_path}: {e}")
+        else:
+            print(f"Fil '{filename}' er ikke en CSV-fil og blir hoppet over.")
+    
+    # Sjekk om de forventede filene er lastet inn
+    loaded_files = [filename for filename, _ in all_data]
+    for expected_file in expected_files:
+        if expected_file not in loaded_files:
+            print(f"Advarsel: Den forventede filen '{expected_file}' ble ikke funnet i mappen '{folder_path}'.")
     
     if all_data:
         return all_data
@@ -29,6 +38,14 @@ def generate_html_with_sortable_tables(data_list, output_dir):
     tables_html = ""
     
     for filename, df in data_list:
+        # Tilpass tittelen for spesifikke filer om nødvendig
+        if filename == '3.4aep.csv':
+            table_title = "Resultater fra avansert EP - 3.4aep.csv"
+        elif filename == '3.4aep_best_portfolio.csv':
+            table_title = "Beste portefølje fra avansert EP - 3.4aep_best_portfolio.csv"
+        else:
+            table_title = f"Data fra {filename}"
+        
         # Generer headers for tabellen
         headers = ''.join(f'<th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{col}</th>' for col in df.columns)
         
@@ -42,7 +59,7 @@ def generate_html_with_sortable_tables(data_list, output_dir):
         
         table_html = f"""
         <div class="my-8 bg-white shadow-md rounded-lg overflow-hidden">
-            <h2 class="text-2xl font-bold mb-4 p-4 bg-gray-100">{filename}</h2>
+            <h2 class="text-2xl font-bold mb-4 p-4 bg-gray-100">{table_title}</h2>
             <p class="text-sm text-gray-600 mb-2 px-4">Viser data fra filen {filename}</p>
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200">
@@ -59,11 +76,11 @@ def generate_html_with_sortable_tables(data_list, output_dir):
         </div>
         """
         tables_html += table_html
-
+    
     # HTML-struktur med integrert DataTables for sortering og TailwindCSS for styling
     html_content = f"""
     <!DOCTYPE html>
-    <html lang="en">
+    <html lang="no">
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -92,7 +109,7 @@ def generate_html_with_sortable_tables(data_list, output_dir):
             $(document).ready(function() {{
                 $('table').DataTable({{
                     "pageLength": 15,
-                    "lengthMenu": [[15, 30, 50, -1], [15, 30, 50, "All"]],
+                    "lengthMenu": [[15, 30, 50, -1], [15, 30, 50, "Alle"]],
                     "responsive": true,
                     "language": {{
                         "search": "Søk:",
@@ -136,14 +153,14 @@ if __name__ == '__main__':
     # Definer relative stier for 'output'-mappen der HTML-filen blir lagret
     output_dir = os.path.join(project_root, '4.prob2_visual')
     print(f"HTML-filen vil bli lagret i: {output_dir}")
-
+    
     # Definer relative stier til mappen der CSV-filene er lagret
     folder_path = os.path.join(project_root, '3.prob2_output')
-    print(f"Laster CSV-filer fra: {folder_path}")
-
+    print(f"Laster CSV-filer fra: {folder_path}\n")
+    
     # Last inn data fra alle CSV-filer i mappen
     data_list = load_data_from_folder(folder_path)
-
+    
     if data_list is not None:
         # Generer HTML-side med en tabell for hver CSV-fil
         generate_html_with_sortable_tables(data_list, output_dir)
