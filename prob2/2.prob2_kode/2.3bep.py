@@ -8,7 +8,7 @@ script_dir = os.path.dirname(os.path.abspath(__file__))
 # Definer stier for input- og output-filer basert på skriptets plassering
 returns_file = os.path.join(script_dir, '../3.prob2_output/3.1beregn_mnd_avk.csv')
 cov_matrix_file = os.path.join(script_dir, '../3.prob2_output/3.2beregn_kovarians_matrix.csv')
-results_file = os.path.join(script_dir, '../3.prob2_output/3.3ep.csv')
+results_file = os.path.join(script_dir, '../3.prob2_output/3.3bep.csv')
 
 # Last inn dataene fra CSV-filen med månedlige avkastninger
 returns_df = pd.read_csv(returns_file, index_col='Date', parse_dates=True)
@@ -157,6 +157,6 @@ print(f"Beste porteføljevekter: {best_portfolio}")
 
 # Lagre den beste porteføljen til en CSV-fil
 best_portfolio_df = pd.DataFrame([best_portfolio], columns=returns_df.columns)
-best_portfolio_df.to_csv(os.path.join(script_dir, '../3.prob2_output/3.4best_portfolio.csv'), index=False)
+best_portfolio_df.to_csv(os.path.join(script_dir, '../3.prob2_output/3.3bep_best_portfolio.csv'), index=False)
 
-print(f"Beste portefølje lagret i '3.4best_portfolio.csv'")
+print(f"Beste portefølje lagret i '3.3bep_best_portfolio.csv'")

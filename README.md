@@ -72,16 +72,21 @@ python prob2/2.prob2_kode/2.1beregn_mnd_avk.py
 python prob2/2.prob2_kode/2.2beregn_kovarians_matrix.py
 ```
 
-4. Kjør ep og skrive ut til csv-fil "3.3ep.csv" (overskriver hvis filen finnes i mappen fra før): 
+4. Kjør bep og skrive ut til csv-fil "3.3bep.csv" (overskriver hvis filen finnes i mappen fra før): 
 ```bash
-python prob2/2.prob2_kode/2.3ep.py
+python prob2/2.prob2_kode/2.3bep.py
 ```
 
-5. Generer html-fil med tabeller av csv-filene: 
+5. Kjør aep og skrive ut til csv-fil "3.4aep.csv" (overskriver hvis filen finnes i mappen fra før): 
+```bash
+python prob2/2.prob2_kode/2.4aep.py
+```
+
+Generer html-fil med tabeller av csv-filene: 
 ```bash
 python prob2/4.prob2_visual/4.1visual.py
 ```
-6. Start server og vis den genererte html filen
+Start server og vis den genererte html filen
 Naviger til riktig mappe: 
 ```bash
 cd prob2/4.prob2_visual/
