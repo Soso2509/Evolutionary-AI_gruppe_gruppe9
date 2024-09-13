@@ -60,28 +60,29 @@ def mutate_portfolio(portfolio, mutation_rate=0.1):
 
 # Funksjon for å kjøre basic ES og returnere sharpe ratio og parametere
 def run_es_algorithm(pop_size, num_generations, mutation_rate, risk_free_rate):
-    population = generate_population(pop_size, num_assets)
-    best_sharpe_ratio = -np.inf
-    best_portfolio = None
+    population = generate_population(pop_size, num_assets)      # kjører funksjon for å generere random population
+    best_sharpe_ratio = -np.inf     # -np.inf er bare "minus infinite", så alle verdier som legges til i etterkant vil være høyere
+    best_portfolio = None           # Inisialiserer best_portfolio som skal holde på de beste vektene
 
-    for generation in range(num_generations):
-        new_population = [mutate_portfolio(population[np.random.randint(pop_size)], mutation_rate) for _ in
-                          range(pop_size)]
-        population = np.array(new_population)
 
-        fitness_scores = np.array(
-            [fitness_function(ind, expected_returns, cov_matrix, risk_free_rate) for ind in population])
-        best_fitness_index = np.argmax(fitness_scores)
+    for generation in range(num_generations):   # For hver generasjon i det angitte antallet generasjoner
+        new_population = [mutate_portfolio(population[np.random.randint(pop_size)], mutation_rate) for _ in range(pop_size)]    # Generer en ny populasjon ved å mutere en tilfeldig valgt portefølje fra den nåværende populasjonen
+        population = np.array(new_population)   # Oppdater populasjonen med den nye generasjonen
 
+        fitness_scores = np.array([fitness_function(ind, expected_returns, cov_matrix, risk_free_rate) for ind in population])     # Beregner Sharpe-ratio for hver portefølje i den nye populasjonen
+        best_fitness_index = np.argmax(fitness_scores)      # Finn indeksen til den beste porteføljen i den nye populasjonen
+
+        # Hent den beste Sharpe-ratio og tilhørende portefølje for denne generasjonen
         generation_best_sharpe_ratio = fitness_scores[best_fitness_index]
         generation_best_portfolio = population[best_fitness_index]
 
+        # Oppdater den beste Sharpe-ratio og portefølje hvis den beste i denne generasjonen er bedre
         if generation_best_sharpe_ratio > best_sharpe_ratio:
             best_sharpe_ratio = generation_best_sharpe_ratio
             best_portfolio = generation_best_portfolio
 
-        generation_best_expected_return, generation_best_portfolio_stddev = portfolio_performance(
-            generation_best_portfolio, expected_returns, cov_matrix)
+        generation_best_expected_return, generation_best_portfolio_stddev = portfolio_performance(generation_best_portfolio, expected_returns, cov_matrix)  # Beregn porteføljens forventede avkastning og standardavvik for den beste porteføljen i denne generasjonen
+        # Skriv ut resultater for den nåværende generasjonen
         print(f"Population Size: {pop_size}, Generations: {num_generations}, Mutation Rate: {mutation_rate}")
         print(f"Generation {generation + 1}: Best Sharpe Ratio = {generation_best_sharpe_ratio:.4f}, "
               f"Expected Return = {generation_best_expected_return:.4f}, "
