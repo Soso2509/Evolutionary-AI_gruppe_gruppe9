@@ -1,7 +1,6 @@
 import os
 import numpy as np
 import pandas as pd
-from itertools import product
 
 # Finn stien til dette skriptet (der filen kjører fra)
 script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -49,8 +48,8 @@ def generate_population(pop_size, num_assets):
     return np.array([generate_portfolio(num_assets) for _ in range(pop_size)])
 
 
-# Funksjon for å mutere porteføljer
-def mutate_portfolio(portfolio, mutation_rate=0.1):
+# Funksjon for å mutere porteføljer med selv-adaptiv mutasjonsrate
+def mutate_portfolio(portfolio, mutation_rate):
     mutation = np.random.normal(0, mutation_rate, len(portfolio))
     mutated_portfolio = portfolio + mutation
     mutated_portfolio = np.clip(mutated_portfolio, 0, 1)  # Sikrer at ingen vekt er negativ
@@ -58,21 +57,38 @@ def mutate_portfolio(portfolio, mutation_rate=0.1):
     return mutated_portfolio
 
 
-# Funksjon for å kjøre basic ES og returnere sharpe ratio og parametere
-def run_es_algorithm(pop_size, num_generations, mutation_rate, risk_free_rate):
-    population = generate_population(pop_size, num_assets)      # kjører funksjon for å generere random population
-    best_sharpe_ratio = -np.inf     # -np.inf er bare "minus infinite", så alle verdier som legges til i etterkant vil være høyere
-    best_portfolio = None           # Inisialiserer best_portfolio som skal holde på de beste vektene
+# Funksjon for å generere avkom ved å kombinere porteføljer (recombination)
+def recombine_portfolios(parents):
+    # Gjør en enkel aritmetisk gjennomsnitt av de valgte foreldrene
+    num_parents = len(parents)
+    offspring = np.mean(parents, axis=0)
+    return offspring
 
 
-    for generation in range(num_generations):   # For hver generasjon i det angitte antallet generasjoner
-        new_population = [mutate_portfolio(population[np.random.randint(pop_size)], mutation_rate) for _ in range(pop_size)]    # Generer en ny populasjon ved å mutere en tilfeldig valgt portefølje fra den nåværende populasjonen
-        population = np.array(new_population)   # Oppdater populasjonen med den nye generasjonen
+# Funksjon for å kjøre ES-algoritmen med selv-adaptiv mutasjonsrate
+def run_es_algorithm(pop_size, num_generations, initial_mutation_rate, risk_free_rate):
+    population = generate_population(pop_size, num_assets)  # Generer en tilfeldig populasjon
+    best_sharpe_ratio = -np.inf  # Start med laveste mulige Sharpe-ratio
+    best_portfolio = None  # Beste portefølje initialisert som None
 
-        fitness_scores = np.array([fitness_function(ind, expected_returns, cov_matrix, risk_free_rate) for ind in population])     # Beregner Sharpe-ratio for hver portefølje i den nye populasjonen
-        best_fitness_index = np.argmax(fitness_scores)      # Finn indeksen til den beste porteføljen i den nye populasjonen
+    mutation_rate = initial_mutation_rate  # Start med initial mutasjonsrate
+    mutation_step_size = 0.1  # Stegstørrelse for å endre mutasjonsraten
 
-        # Hent den beste Sharpe-ratio og tilhørende portefølje for denne generasjonen
+    for generation in range(num_generations):  # For hver generasjon
+        new_population = []
+        for _ in range(pop_size):
+            parents_indices = np.random.choice(pop_size, 2, replace=False)  # Velg to foreldre tilfeldig
+            parent_portfolios = population[parents_indices]
+            child_portfolio = recombine_portfolios(parent_portfolios)  # Recombine foreldrene
+            mutated_portfolio = mutate_portfolio(child_portfolio, mutation_rate)
+            new_population.append(mutated_portfolio)
+
+        population = np.array(new_population)  # Oppdater populasjonen med den nye generasjonen
+
+        fitness_scores = np.array([fitness_function(ind, expected_returns, cov_matrix, risk_free_rate) for ind in population])  # Beregn fitness for hver portefølje
+        best_fitness_index = np.argmax(fitness_scores)  # Finn den beste porteføljen i populasjonen
+
+        # Hent den beste Sharpe-ratio og portefølje for denne generasjonen
         generation_best_sharpe_ratio = fitness_scores[best_fitness_index]
         generation_best_portfolio = population[best_fitness_index]
 
@@ -81,9 +97,17 @@ def run_es_algorithm(pop_size, num_generations, mutation_rate, risk_free_rate):
             best_sharpe_ratio = generation_best_sharpe_ratio
             best_portfolio = generation_best_portfolio
 
-        generation_best_expected_return, generation_best_portfolio_stddev = portfolio_performance(generation_best_portfolio, expected_returns, cov_matrix)  # Beregn porteføljens forventede avkastning og standardavvik for den beste porteføljen i denne generasjonen
+        # Oppdater mutasjonsraten basert på ytelsen til populasjonen
+        if generation_best_sharpe_ratio > best_sharpe_ratio:
+            mutation_rate = max(0.01, mutation_rate - mutation_step_size)  # Reduser mutasjonsrate hvis ytelsen er bedre
+        else:
+            mutation_rate += mutation_step_size  # Øk mutasjonsrate hvis ytelsen ikke forbedres
+
+        # Beregn porteføljens forventede avkastning og standardavvik
+        generation_best_expected_return, generation_best_portfolio_stddev = portfolio_performance(
+            generation_best_portfolio, expected_returns, cov_matrix)
         # Skriv ut resultater for den nåværende generasjonen
-        print(f"Population Size: {pop_size}, Generations: {num_generations}, Mutation Rate: {mutation_rate}")
+        print(f"Population Size: {pop_size}, Generations: {num_generations}, Initial Mutation Rate: {initial_mutation_rate}, Current Mutation Rate: {mutation_rate}")
         print(f"Generation {generation + 1}: Best Sharpe Ratio = {generation_best_sharpe_ratio:.4f}, "
               f"Expected Return = {generation_best_expected_return:.4f}, "
               f"Portfolio Std Dev = {generation_best_portfolio_stddev:.4f}")
@@ -94,7 +118,7 @@ def run_es_algorithm(pop_size, num_generations, mutation_rate, risk_free_rate):
 # Parametere å teste
 population_sizes = [20, 50, 100]
 generation_counts = [50, 100, 200]
-mutation_rates = [0.01, 0.05, 0.1]
+initial_mutation_rates = [0.01, 0.05, 0.1]
 risk_free_rate = 0.02 / 12
 
 # Inisialiserer "best" variabler som vil fylles med de beste parameterne underveis
@@ -102,18 +126,18 @@ best_sharpe = -np.inf
 best_combination = None
 best_combination_number = -1
 combination_counter = 1
-total_combinations = len(population_sizes) * len(generation_counts) * len(mutation_rates)
+total_combinations = len(population_sizes) * len(generation_counts) * len(initial_mutation_rates)
 results = []
 
 # Kjører gjennom ES slik at alle kombinasjonene av "parametere å teste" kan få sin gjennomgang. Tre for loops er alt som trengs :|
 for pop_size in population_sizes:
     for gen_count in generation_counts:
-        for mut_rate in mutation_rates:
+        for initial_mutation_rate in initial_mutation_rates:
             print(
-                f"Kjører kombinasjon {combination_counter}/{total_combinations}: pop_size={pop_size}, gen_count={gen_count}, mut_rate={mut_rate}")
+                f"Kjører kombinasjon {combination_counter}/{total_combinations}: pop_size={pop_size}, gen_count={gen_count}, initial_mutation_rate={initial_mutation_rate}")
 
             # Kjører ES funksjonen med de nåværende parameterne
-            best_portfolio, sharpe_ratio = run_es_algorithm(pop_size, gen_count, mut_rate, risk_free_rate)
+            best_portfolio, sharpe_ratio = run_es_algorithm(pop_size, gen_count, initial_mutation_rate, risk_free_rate)
 
             print(f"Sharpe-ratio for kombinasjon {combination_counter}/{total_combinations}: {sharpe_ratio}")
 
@@ -122,16 +146,15 @@ for pop_size in population_sizes:
                 'combination_number': combination_counter,
                 'pop_size': pop_size,
                 'gen_count': gen_count,
-                'mut_rate': mut_rate,
+                'initial_mutation_rate': initial_mutation_rate,
                 'sharpe_ratio': sharpe_ratio,
                 'best_portfolio_weights': best_portfolio.tolist()
-
             })
 
             # Om nåværende iterasjon har bedre sharpe ratio enn det som er registrert atm så skal kombinasjonen av test parameter og kombinasjons nr. oppdateres til det nåværende
             if sharpe_ratio > best_sharpe:
                 best_sharpe = sharpe_ratio
-                best_combination = (pop_size, gen_count, mut_rate)
+                best_combination = (pop_size, gen_count, initial_mutation_rate)
                 best_combination_number = combination_counter
 
             # NEXT combination! Back to the top of the loop now
@@ -145,5 +168,5 @@ print("Best Combination Number:", best_combination_number)
 
 
 best_portfolio_df = pd.DataFrame([best_portfolio], columns=returns_df.columns)
-best_portfolio_df.to_csv(os.path.join(script_dir, '../3.prob2_output/3.5bes_best_portfolio.csv'), index=False)
-print(f"\nBeste portefølje lagret i '3.5bes_best_portfolio.csv'")
+best_portfolio_df.to_csv(os.path.join(script_dir, '../3.prob2_output/3.6aes_best_portfolio.csv'), index=False)
+print(f"\nBeste portefølje lagret i '3.6aes_best_portfolio.csv'")
