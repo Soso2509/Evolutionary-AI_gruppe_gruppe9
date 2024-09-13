@@ -8,7 +8,7 @@ Før du starter, sørg for at du har følgende installert:
 - [Visual Studio Code](https://code.visualstudio.com/)
 - Git for versjonskontroll
 
-## Oppsett av utviklingsmiljø
+## Oppsett av utviklingsmiljø første gang du starter prosjektet
 
 For å sikre at alle på teamet bruker de samme avhengighetene og versjonene, følg disse trinnene for å sette opp utviklingsmiljøet:
 
@@ -123,8 +123,32 @@ Når du er ferdig med å jobbe, kan du deaktivere det virtuelle miljøet ved å 
 ```bash
 deactivate
 ```
+### Trinn 9: Oppdater din lokale `main`-gren og deretter din egen gren før du begynner å programmere
 
-### Trinn 9: Oppdatere `main`-grenen med endringer fra en annen gren
+Følg disse trinnene
+
+1. **Sjekk ut main-grenen og trekk ned de nyeste endringene:**
+
+   ```bash
+   git checkout main
+   git pull origin main
+   ```
+
+2. **Sjekk ut din egen gren:**
+
+   ```bash
+   git checkout <din-gren>
+   ```
+
+3. **Oppdater din gren med de nyeste endringene fra main:**
+
+   ```bash
+   git merge main
+   ```
+
+4. **Start å kode på din egen gren!**
+
+### Trinn 10: Oppdatere `main`-grenen med endringer fra en annen gren
 
 Følg disse trinnene for å slå sammen endringene fra en vilkårlig gren inn i `main`-grenen:
 
