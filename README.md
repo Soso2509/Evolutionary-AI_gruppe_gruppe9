@@ -156,6 +156,8 @@ Følg disse trinnene for å slå sammen endringene fra en vilkårlig gren inn i 
 
    ```bash
    git checkout <din-gren>
+   git add .
+   git commit -m "Din commit-melding her"
    git push origin <din-gren>
    ```
 
