@@ -17,7 +17,7 @@ Før du starter, sørg for at du har følgende installert:
    - [Problem 4](#problem-4)
 - [Oppdatering av avhengigheter](#oppdatere-avhengigheter-requirementstxt-før-git-push)
 - [Deaktiverer det virtuelle miljøet](#deaktivere-det-virtuelle-miljøet)
-- [Oppretting og merge av branch med kommandolinje](#oppretting-og-merge-av-branch-med-kommandolinje)
+- [Kommandoer relatert til git](#some-useful-git-commands)
 
 ## Oppsett av utviklingsmiljø første gang du starter prosjektet
 
