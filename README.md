@@ -164,7 +164,7 @@ OR\
 `git push -u origin <branch>` _Pushes branch to remote_\
 `git merge <branch>` _Merges changes from another branch into the branch you're in_
 
-#### Oppdater din lokale `main`-gren og deretter din egen gren før du begynner å programmere
+### Oppdater din lokale `main`-gren og deretter din egen gren før du begynner å programmere
 
 Følg disse trinnene
 
@@ -189,7 +189,7 @@ Følg disse trinnene
 
 4. **Start å kode på din egen gren!**
 
-#### Oppdatere `main`-grenen med endringer fra en annen gren
+### Oppdatere `main`-grenen med endringer fra en annen gren
 
 Følg disse trinnene for å slå sammen endringene fra en vilkårlig gren inn i `main`-grenen:
 
