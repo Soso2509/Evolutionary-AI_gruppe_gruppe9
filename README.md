@@ -54,63 +54,15 @@ pip install -r requirements.txt
 ```
 
 ### Trinn 6: Kjøre kode
-Når utviklingsmiljøet er satt opp, kan du kjøre kode ved å kjøre følgende kommando:
+Når utviklingsmiljøet er satt opp, kan koden kjøres:
 
-Problem 2: 
-1. Naviger til riktig mappe der kodefilene ligger: 
-```bash
-cd prob2/2.prob2_kode
-```
+[Problem 2](/prob2/oppg2_CodeCommands.md)
 
-2. Beregne månedlig avkastning og skrive ut til csv-fil "mnd_avk_aksjer.csv" (overskriver hvis filen finnes i mappen fra før): 
-```bash
-python prob2/2.prob2_kode/2.1beregn_mnd_avk.py
-```
-
-3. Beregne kovariansmatrise og skrive ut til csv-fil "mnd_avk_cov_matrix.csv" (overskriver hvis filen finnes i mappen fra før): 
-```bash
-python prob2/2.prob2_kode/2.2beregn_kovarians_matrix.py
-```
-
-4. Kjør bep og skrive ut til csv-fil "3.3bep.csv" (overskriver hvis filen finnes i mappen fra før): 
-```bash
-python prob2/2.prob2_kode/2.3bep.py
-```
-
-5. Kjør aep og skrive ut til csv-fil "3.4aep.csv" (overskriver hvis filen finnes i mappen fra før): 
-```bash
-python prob2/2.prob2_kode/2.4aep.py
-```
-
-Generer html-fil med tabeller av csv-filene: 
-```bash
-python prob2/4.prob2_visual/4.1visual.py
-```
-Start server og vis den genererte html filen
-Naviger til riktig mappe: 
-```bash
-cd prob2/4.prob2_visual/
-```
-
-Start server: 
-```bash
-python -m http.server 8000                              
-```
-
-Åpne nettleser og gå til følgende lenke for å åpne den generert html-filen:
-```bash
-http://localhost:8000/prob2/4.prob2_visual/aksje_avkastning_sorterbar.html                          
-```
-
-Avslutt server: 
-```bash
-Ctrl + C                              
-```
 
 ### Trinn 5: Oppdatere avhengigheter `requirements.txt` før git push
 
 For å sikre at alle bruker samme avhengigheter, kan du generere eller oppdatere `requirements.txt` før du pusher koden.
-Husk å gå til rot-mappen før du kjører disse kommandoene. Det er der "requirements.txt" filen er lagret og bør lagres. 
+Husk å gå til rot-mappen før du kjører disse kommandoene. Det er der "requirements.txt" filen er lagret og bør lagres.
 
 Generer eller oppdater `requirements.txt` med pakker som er innstallert i nåværende virtuelle miljø:
 ```bash
