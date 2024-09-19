@@ -9,7 +9,7 @@ script_dir = os.path.dirname(os.path.abspath(__file__))
 # Definer stier for input- og output-filer basert på skriptets plassering
 returns_file = os.path.join(script_dir, '../3.prob2_output/3.1beregn_mnd_avk.csv')
 cov_matrix_file = os.path.join(script_dir, '../3.prob2_output/3.2beregn_kovarians_matrix.csv')
-results_file = os.path.join(script_dir, '../3.prob2_output/3.3bep.csv')
+results_file = os.path.join(script_dir, '../3.prob2_output/3.5bes.csv')
 
 # Last inn dataene fra CSV-filen med månedlige avkastninger
 returns_df = pd.read_csv(returns_file, index_col='Date', parse_dates=True)
@@ -57,16 +57,31 @@ def mutate_portfolio(portfolio, mutation_rate=0.1):
     mutated_portfolio /= np.sum(mutated_portfolio)  # Sikrer at vektene fortsatt summerer til 1
     return mutated_portfolio
 
+def recombine_portfolios(parents):
+    # Gjør en enkel aritmetisk gjennomsnitt av de valgte foreldrene
+    num_parents = len(parents)
+    offspring = np.mean(parents, axis=0)
+    return offspring
+
+
 
 # Funksjon for å kjøre basic ES og returnere sharpe ratio og parametere
 def run_es_algorithm(pop_size, num_generations, mutation_rate, risk_free_rate):
-    population = generate_population(pop_size, num_assets)      # kjører funksjon for å generere random population
+    population = generate_population(pop_size, num_assets)      # Generer initial populasjon
     best_sharpe_ratio = -np.inf     # -np.inf er bare "minus infinite", så alle verdier som legges til i etterkant vil være høyere
     best_portfolio = None           # Inisialiserer best_portfolio som skal holde på de beste vektene
 
-
     for generation in range(num_generations):   # For hver generasjon i det angitte antallet generasjoner
-        new_population = [mutate_portfolio(population[np.random.randint(pop_size)], mutation_rate) for _ in range(pop_size)]    # Generer en ny populasjon ved å mutere en tilfeldig valgt portefølje fra den nåværende populasjonen
+        new_population = []
+        for _ in range(pop_size):
+            # Velg to foreldre tilfeldig fra populasjonen
+            parents = population[np.random.choice(pop_size, size=2, replace=False)]
+            # Rekombiner foreldrene for å lage en ny avkom
+            offspring = recombine_portfolios(parents)
+            # Muter avkommet
+            offspring = mutate_portfolio(offspring, mutation_rate)
+            new_population.append(offspring)
+
         population = np.array(new_population)   # Oppdater populasjonen med den nye generasjonen
 
         fitness_scores = np.array([fitness_function(ind, expected_returns, cov_matrix, risk_free_rate) for ind in population])     # Beregner Sharpe-ratio for hver portefølje i den nye populasjonen
@@ -109,8 +124,7 @@ results = []
 for pop_size in population_sizes:
     for gen_count in generation_counts:
         for mut_rate in mutation_rates:
-            print(
-                f"Kjører kombinasjon {combination_counter}/{total_combinations}: pop_size={pop_size}, gen_count={gen_count}, mut_rate={mut_rate}")
+            print(f"Kjører kombinasjon {combination_counter}/{total_combinations}: pop_size={pop_size}, gen_count={gen_count}, mut_rate={mut_rate}")
 
             # Kjører ES funksjonen med de nåværende parameterne
             best_portfolio, sharpe_ratio = run_es_algorithm(pop_size, gen_count, mut_rate, risk_free_rate)
@@ -136,6 +150,12 @@ for pop_size in population_sizes:
 
             # NEXT combination! Back to the top of the loop now
             combination_counter += 1
+
+# Konverter resultatlisten til en pandas DataFrame for enklere lagring og analyse
+results_df = pd.DataFrame(results)
+
+# Lagre resultatene til en CSV-fil uten å inkludere DataFrame-indeksen
+results_df.to_csv(results_file, index=False)
 
 # Output the best results
 print("\nBest Portfolio Weights:", best_portfolio)
