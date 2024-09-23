@@ -123,7 +123,6 @@ for pop_size_mu in population_sizes_mu:
                     f"Kjører kombinasjon {combination_counter}/{total_combinations}: pop_size_mu={pop_size_mu}, pop_size_lambda={pop_size_lambda} , gen_count={gen_count}, mut_rate={mut_rate}")
 
                 # Kjører ES funksjonen med de nåværende parameterne
-
                 best_portfolio, sharpe_ratio = run_MuPlussLambda_algorithm(pop_size_mu, pop_size_lambda,gen_count, mut_rate, risk_free_rate)
                 print(f"Sharpe-ratio for kombinasjon {combination_counter}/{total_combinations}: {sharpe_ratio}")
 
@@ -168,17 +167,7 @@ print(f"\nBeste portefølje lagret i '3.7m+l_best_portfolio.csv'")
 
 
 
-# Plot the evolution of Sharpe Ratio over generations for a specific combination
-def plot_sharpe_evolution(results_df):
-    # Plotting Sharpe Ratio evolution
-    plt.figure(figsize=(10, 6))
-    plt.plot(results_df['gen_count'], results_df['sharpe_ratio'], marker='o', linestyle='-', color='b')
-    plt.title('Evolution of Sharpe Ratio Over Generations')
-    plt.xlabel('Generation')
-    plt.ylabel('Sharpe Ratio')
-    plt.grid(True)
-    plt.savefig(os.path.join(script_dir, '../4.prob2_visual/3.7_sharpeRatioEvolution.png'), dpi=300, bbox_inches='tight')
-    plt.close()
+
 
 # Assuming you have `best_portfolio_df` as a DataFrame of the asset weights
 def plot_best_portfolio_weights(best_portfolio_df):
@@ -190,6 +179,4 @@ def plot_best_portfolio_weights(best_portfolio_df):
     plt.savefig(os.path.join(script_dir, '../4.prob2_visual/3.7_best_portfolio_allocation.png'), dpi=300, bbox_inches='tight')
     plt.close()
 
-# Example Usage:
-plot_sharpe_evolution(results_df)
 plot_best_portfolio_weights(best_portfolio_df)
