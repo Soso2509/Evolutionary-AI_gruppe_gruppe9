@@ -1,6 +1,7 @@
 import os
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 
 # Finn stien til dette skriptet (der filen kjører fra)
 script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -98,8 +99,8 @@ def run_MuPlussLambda_algorithm(pop_size_mu, pop_size_lambda,num_generations, mu
 
 
 # Parametere å teste
-population_sizes_mu = [20, 50, 100]
-population_sizes_lambda = [10, 100, 200]
+population_sizes_mu = [10, 50, 100]
+population_sizes_lambda = [20, 100, 200]
 generation_counts = [50, 100, 200]
 mutation_rates = [0.01, 0.05, 0.1]
 risk_free_rate = 0.02 / 12
@@ -122,7 +123,6 @@ for pop_size_mu in population_sizes_mu:
                     f"Kjører kombinasjon {combination_counter}/{total_combinations}: pop_size_mu={pop_size_mu}, pop_size_lambda={pop_size_lambda} , gen_count={gen_count}, mut_rate={mut_rate}")
 
                 # Kjører ES funksjonen med de nåværende parameterne
-
                 best_portfolio, sharpe_ratio = run_MuPlussLambda_algorithm(pop_size_mu, pop_size_lambda,gen_count, mut_rate, risk_free_rate)
                 print(f"Sharpe-ratio for kombinasjon {combination_counter}/{total_combinations}: {sharpe_ratio}")
 
@@ -164,3 +164,19 @@ print("Best Combination Number:", best_combination_number)
 best_portfolio_df = pd.DataFrame([best_portfolio], columns=returns_df.columns)
 best_portfolio_df.to_csv(os.path.join(script_dir, '../3.prob2_output/3.7m+l_best_portfolio.csv'), index=False)
 print(f"\nBeste portefølje lagret i '3.7m+l_best_portfolio.csv'")
+
+
+
+
+
+# Assuming you have `best_portfolio_df` as a DataFrame of the asset weights
+def plot_best_portfolio_weights(best_portfolio_df):
+    # Plot the asset allocation of the best portfolio
+    best_portfolio_df.T.plot(kind='bar', legend=False, figsize=(10, 6))
+    plt.title('Best Portfolio Asset Allocation')
+    plt.ylabel('Weight')
+    plt.grid(True)
+    plt.savefig(os.path.join(script_dir, '../4.prob2_visual/3.7_best_portfolio_allocation.png'), dpi=300, bbox_inches='tight')
+    plt.close()
+
+plot_best_portfolio_weights(best_portfolio_df)

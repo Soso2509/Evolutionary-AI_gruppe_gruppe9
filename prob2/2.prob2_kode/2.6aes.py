@@ -2,191 +2,246 @@ import os
 import numpy as np
 import pandas as pd
 
-# Finn stien til dette skriptet (der filen kjører fra)
+# Get the path of the script (the directory where this file is located)
 script_dir = os.path.dirname(os.path.abspath(__file__))
 
-# Definer stier for input- og output-filer basert på skriptets plassering
+# Define paths for input and output files
 returns_file = os.path.join(script_dir, '../3.prob2_output/3.1beregn_mnd_avk.csv')
 cov_matrix_file = os.path.join(script_dir, '../3.prob2_output/3.2beregn_kovarians_matrix.csv')
 results_file = os.path.join(script_dir, '../3.prob2_output/3.6aes.csv')
 
-# Last inn dataene fra CSV-filen med månedlige avkastninger
+# Load the monthly returns data into a pandas DataFrame
 returns_df = pd.read_csv(returns_file, index_col='Date', parse_dates=True)
 
-# Beregn forventet (gjennomsnittlig) avkastning for hver aksje
-expected_returns = returns_df.mean().values  # Gjennomsnittlig månedlig avkastning for hver aksje
-num_assets = len(expected_returns)  # Antall aksjer i porteføljen
+# Compute the expected (mean) returns for each asset
+expected_returns = returns_df.mean().values
+num_assets = len(expected_returns)
 
-# Last inn kovariansmatrisen fra CSV-filen du allerede har generert
+# Load the covariance matrix from a CSV file
 cov_matrix = pd.read_csv(cov_matrix_file, index_col=0).values
 
+# Define risk-free rate (annual 2% rate, converted to monthly)
+risk_free_rate = 0.02 / 12
 
-# Funksjon for å beregne porteføljens forventede avkastning og standardavvik (risiko)
+
+# Function to calculate portfolio performance (return and risk)
 def portfolio_performance(weights, expected_returns, cov_matrix):
+    # Calculate expected return as dot product of weights and expected returns
     expected_return = np.dot(weights, expected_returns)
+
+    # Calculate portfolio variance as a weighted covariance
     portfolio_variance = np.dot(weights.T, np.dot(cov_matrix, weights))
+
+    # Calculate portfolio risk (standard deviation)
     portfolio_stddev = np.sqrt(portfolio_variance)
+
     return expected_return, portfolio_stddev
 
 
-# Fitness-funksjon: Beregn Sharpe-ratio
+# Fitness function: Calculate Sharpe ratio
 def fitness_function(weights, expected_returns, cov_matrix, risk_free_rate):
+    # Calculate portfolio return and risk
     expected_return, portfolio_stddev = portfolio_performance(weights, expected_returns, cov_matrix)
+
+    # If risk is zero, return a negative infinite Sharpe ratio (invalid portfolio)
+    if portfolio_stddev == 0:
+        return -np.inf
+
+    # Calculate Sharpe ratio as (return - risk-free rate) / risk
     sharpe_ratio = (expected_return - risk_free_rate) / portfolio_stddev
     return sharpe_ratio
 
 
-# Funksjon for å generere en tilfeldig portefølje
+# Generate an individual portfolio with weights and random sigma (self-adaptive mutation rate)
 def generate_portfolio(num_assets):
-    weights = np.random.random(num_assets)  # Tilfeldige vekter
-    weights /= np.sum(weights)  # Sørg for at vektene summerer til 1
-    return weights
+    # Random weights between 0 and 1, normalized to sum to 1
+    weights = np.random.random(num_assets)
+    weights /= np.sum(weights)
+
+    # Assign random sigma for self-adaptive mutation
+    return {'weights': weights, 'sigma': np.random.uniform(0.05, 0.2, num_assets)}
 
 
-# Funksjon for å generere en populasjon av porteføljer
+# Generate a population of portfolios
 def generate_population(pop_size, num_assets):
-    return np.array([generate_portfolio(num_assets) for _ in range(pop_size)])
+    # Create a list of portfolios
+    return [generate_portfolio(num_assets) for _ in range(pop_size)]
 
 
-# Funksjon for å mutere porteføljer med selv-adaptiv mutasjonsrate
-def mutate_portfolio(portfolio, mutation_rate):
-    mutation = np.random.normal(0, mutation_rate, len(portfolio))
-    mutated_portfolio = portfolio + mutation
-    mutated_portfolio = np.clip(mutated_portfolio, 0, 1)  # Sikrer at ingen vekt er negativ
-    mutated_portfolio /= np.sum(mutated_portfolio)  # Sikrer at vektene fortsatt summerer til 1
-    return mutated_portfolio
+# Adjust sigma (mutation rate) based on improvement
+def adapt_sigma(sigma, improvement, tau=0.1):
+    # Decrease sigma if improvement is positive, otherwise increase it
+    if improvement > 0:
+        return sigma * np.exp(-tau)  # Reduce sigma on improvement
+    else:
+        return sigma * np.exp(tau)  # Increase sigma on no improvement
 
 
-def blx_alpha_recombination(parents, alpha=0.3):
-    """
-    Blend Crossover (BLX-α) method for generating an offspring from two parent portfolios.
+# Mutate portfolio based on self-adaptive sigma and calculate improvement in fitness
+def mutate_portfolio(individual, previous_fitness, expected_returns, cov_matrix, risk_free_rate):
+    weights = individual['weights']  # Current weights
+    sigma = individual['sigma']  # Current mutation rate (sigma)
+    num_assets = len(weights)
 
-    Args:
-        parents (np.ndarray): A 2D array of shape (2, num_assets) where each row is a parent portfolio.
-        alpha (float): The alpha parameter controls the range extension beyond the parents' values.
+    # Mutate weights using normal distribution scaled by sigma
+    mutation = sigma * np.random.normal(size=num_assets)
+    weights_prime = weights + mutation
 
-    Returns:
-        np.ndarray: A 1D array representing the offspring portfolio weights.
-    """
-    parent1, parent2 = parents
-    num_assets = len(parent1)
-    offspring = np.zeros(num_assets)
+    # Ensure weights are within valid bounds (0-1) and normalize
+    weights_prime = np.clip(weights_prime, 0, 1)
+    if np.sum(weights_prime) == 0:
+        weights_prime = generate_portfolio(num_assets)['weights']
+    else:
+        weights_prime /= np.sum(weights_prime)
 
-    for i in range(num_assets):
-        c_min = min(parent1[i], parent2[i])
-        c_max = max(parent1[i], parent2[i])
-        range_extension = alpha * (c_max - c_min)
+    # Calculate fitness after mutation (Sharpe ratio)
+    current_fitness = fitness_function(weights_prime, expected_returns, cov_matrix, risk_free_rate)
 
-        # Random value within the extended range [c_min - range_extension, c_max + range_extension]
-        offspring[i] = np.random.uniform(c_min - range_extension, c_max + range_extension)
+    # Calculate improvement in fitness
+    improvement = current_fitness - previous_fitness
 
-    # Clip to ensure values are within [0, 1] and normalize to sum to 1
-    offspring = np.clip(offspring, 0, 1)
-    offspring /= np.sum(offspring)
+    # Adapt sigma based on whether mutation improved fitness
+    updated_sigma = adapt_sigma(sigma, improvement)
 
-    return offspring
+    # Return updated portfolio with new weights, sigma, and fitness
+    return {'weights': weights_prime, 'sigma': updated_sigma, 'sharpe_ratio': current_fitness}
 
 
-# Recombine Portfolios
-def recombine_portfolios(parents, alpha=0.5):
-    return blx_alpha_recombination(parents, alpha)
+# Recombination (crossover) between two parent portfolios
+def recombine_portfolios(parent1, parent2):
+    # Select a crossover point (at least one gene from each parent)
+    crossover_point = np.random.randint(1, len(parent1['weights']))
 
-# Run ES Algorithm
-def run_es_algorithm(pop_size, num_generations, initial_mutation_rate, risk_free_rate, alpha):
-    population = generate_population(pop_size, num_assets)
-    best_sharpe_ratio = -np.inf
-    best_portfolio = None
+    # Create child weights by combining portions of both parents
+    child_weights = np.concatenate((parent1['weights'][:crossover_point], parent2['weights'][crossover_point:]))
+    child_weights /= np.sum(child_weights)  # Normalize child weights
 
-    mutation_rate = initial_mutation_rate
-    mutation_step_size = 0.1
+    # Average the mutation rates (sigma) of both parents
+    child_sigma = (parent1['sigma'] + parent2['sigma']) / 2
+    return {'weights': child_weights, 'sigma': child_sigma}
+
+
+# Evolutionary strategy algorithm
+def evolutionary_strategy(expected_returns, cov_matrix, population_size, num_generations, risk_free_rate):
+    num_assets = len(expected_returns)  # Number of assets
+    population = generate_population(population_size, num_assets)  # Initial population
+
+    results_per_generation = []  # Track results for each generation
 
     for generation in range(num_generations):
-        new_population = []
-        for _ in range(pop_size):
-            parents_indices = np.random.choice(pop_size, 2, replace=False)
-            parent_portfolios = population[parents_indices]
-            child_portfolio = recombine_portfolios(parent_portfolios, alpha)
-            mutated_portfolio = mutate_portfolio(child_portfolio, mutation_rate)
-            new_population.append(mutated_portfolio)
+        # Calculate fitness (Sharpe ratio) for the entire population
+        fitness_scores = np.array(
+            [fitness_function(ind['weights'], expected_returns, cov_matrix, risk_free_rate) for ind in population])
 
-        population = np.array(new_population)
-        fitness_scores = np.array([fitness_function(ind, expected_returns, cov_matrix, risk_free_rate) for ind in population])
-        best_fitness_index = np.argmax(fitness_scores)
-        generation_best_sharpe_ratio = fitness_scores[best_fitness_index]
-        generation_best_portfolio = population[best_fitness_index]
+        # Save results for this generation
+        for idx, individual in enumerate(population):
+            results_per_generation.append({
+                'generation': generation,
+                'combination_number': None,
+                'sharpe_ratio': fitness_scores[idx],  # Store Sharpe ratio
+                'weights': individual['weights']
+            })
 
-        if generation_best_sharpe_ratio > best_sharpe_ratio:
-            best_sharpe_ratio = generation_best_sharpe_ratio
-            best_portfolio = generation_best_portfolio
+        new_population = []  # Create the new population
 
-        if generation_best_sharpe_ratio > best_sharpe_ratio:
-            mutation_rate = max(0.01, mutation_rate - mutation_step_size)
-        else:
-            mutation_rate += mutation_step_size
+        # Iterate through the current population to generate offspring
+        for individual in population:
+            previous_fitness = fitness_function(individual['weights'], expected_returns, cov_matrix, risk_free_rate)
 
-        generation_best_expected_return, generation_best_portfolio_stddev = portfolio_performance(
-            generation_best_portfolio, expected_returns, cov_matrix)
-        print(f"Population Size: {pop_size}, Generations: {num_generations}, Initial Mutation Rate: {initial_mutation_rate}, Current Mutation Rate: {mutation_rate}, Alpha: {alpha}")
-        print(f"Generation {generation + 1}: Best Sharpe Ratio = {generation_best_sharpe_ratio:.4f}, "
-              f"Expected Return = {generation_best_expected_return:.4f}, "
-              f"Portfolio Std Dev = {generation_best_portfolio_stddev:.4f}")
+            # Mutate individual and get new fitness
+            mutated_offspring = mutate_portfolio(individual, previous_fitness, expected_returns, cov_matrix,
+                                                 risk_free_rate)
 
-    return best_portfolio, best_sharpe_ratio
+            # 50% chance to recombine with another individual
+            if np.random.rand() < 0.5:
+                partner = np.random.choice(population)
+                mutated_offspring = recombine_portfolios(mutated_offspring, partner)
 
-# Hyperparameter Testing
-population_sizes = [20, 50, 100]
-generation_counts = [50, 100, 200]
-initial_mutation_rates = [0.01, 0.05, 0.1]
-alphas = [0.1, 0.3, 0.5, 0.8, 1.0]  # Different values of alpha for BLX-α
+                # Recalculate fitness for the recombined offspring
+                recombined_fitness = fitness_function(mutated_offspring['weights'], expected_returns, cov_matrix,
+                                                      risk_free_rate)
+                mutated_offspring['sharpe_ratio'] = recombined_fitness  # Update fitness for recombined offspring
 
-risk_free_rate = 0.02 / 12
-best_sharpe = -np.inf
-best_combination = None
-best_combination_number = -1
-combination_counter = 1
-total_combinations = len(population_sizes) * len(generation_counts) * len(initial_mutation_rates) * len(alphas)
-results = []
+            # Replace individual if the offspring has a better fitness score
+            if mutated_offspring['sharpe_ratio'] > previous_fitness:
+                new_population.append(mutated_offspring)
+            else:
+                new_population.append(individual)  # Retain the parent if offspring is not better
 
-for pop_size in population_sizes:
-    for gen_count in generation_counts:
-        for initial_mutation_rate in initial_mutation_rates:
-            for alpha in alphas:
-                print(f"Kjører kombinasjon {combination_counter}/{total_combinations}: pop_size={pop_size}, gen_count={gen_count}, initial_mutation_rate={initial_mutation_rate}, alpha={alpha}")
+        population = new_population  # Update population with new offspring
 
-                best_portfolio, sharpe_ratio = run_es_algorithm(pop_size, gen_count, initial_mutation_rate, risk_free_rate, alpha)
+    # Find the best individual from the final population
+    final_fitness_scores = np.array(
+        [fitness_function(ind['weights'], expected_returns, cov_matrix, risk_free_rate) for ind in population])
+    best_idx = np.argmax(final_fitness_scores)
+    best_individual = population[best_idx]
 
-                print(f"Sharpe-ratio for kombinasjon {combination_counter}/{total_combinations}: {sharpe_ratio}")
-
-                results.append({
-                    'combination_number': combination_counter,
-                    'pop_size': pop_size,
-                    'gen_count': gen_count,
-                    'initial_mutation_rate': initial_mutation_rate,
-                    'alpha': alpha,
-                    'sharpe_ratio': sharpe_ratio,
-                    'best_portfolio_weights': best_portfolio.tolist()
-                })
-
-                if sharpe_ratio > best_sharpe:
-                    best_sharpe = sharpe_ratio
-                    best_combination = (pop_size, gen_count, initial_mutation_rate, alpha)
-                    best_combination_number = combination_counter
-
-                combination_counter += 1
-
-# Konverter resultatlisten til en pandas DataFrame for enklere lagring og analyse
-results_df = pd.DataFrame(results)
-
-# Lagre resultatene til en CSV-fil uten å inkludere DataFrame-indeksen
-results_df.to_csv(results_file, index=False)
-
-# Output the best results
-print("\nBest Portfolio Weights:", best_portfolio)
-print("\nBest Sharpe Ratio:", best_sharpe)
-print("Best Parameters:", best_combination)
-print("Best Combination Number:", best_combination_number)
+    # Return the best portfolio's weights, fitness score, and results per generation
+    return best_individual['weights'], final_fitness_scores[best_idx], results_per_generation
 
 
-best_portfolio_df = pd.DataFrame([best_portfolio], columns=returns_df.columns)
-best_portfolio_df.to_csv(os.path.join(script_dir, '../3.prob2_output/3.6aes_best_portfolio.csv'), index=False)
-print(f"\nBeste portefølje lagret i '3.6aes_best_portfolio.csv'")
+# Main function to run the algorithm and save results
+def run_evolutionary_strategy():
+    # Define population sizes and generation counts to test
+    population_sizes = [100, 200, 300]
+    generation_counts = [200, 300, 500]
+
+    total_combinations = len(population_sizes) * len(generation_counts)  # Total combinations of params
+    print(f"Total combinations to test: {total_combinations}")
+
+    combination_counter = 1
+    best_sharpe = -np.inf  # Track the best Sharpe ratio
+    best_combination = None  # Track best combination of parameters
+    best_portfolio_overall = None  # Track the best portfolio weights
+    best_combination_number = None  # Track best combination number
+    results = []  # Track results for all generations
+
+    # Iterate through population sizes and generation counts
+    for pop_size in population_sizes:
+        for gen_count in generation_counts:
+            print(
+                f"Running combination {combination_counter}/{total_combinations}: population_size={pop_size}, generations={gen_count}")
+
+            # Run the evolutionary strategy for the current parameters
+            best_portfolio, sharpe_ratio, generation_results = evolutionary_strategy(
+                expected_returns, cov_matrix, pop_size, gen_count, risk_free_rate
+            )
+
+            # Update combination number in generation results
+            for entry in generation_results:
+                entry['combination_number'] = combination_counter
+
+            # Collect results
+            results.extend(generation_results)
+
+            # Print the Sharpe ratio for the current combination
+            print(f"Sharpe ratio for combination {combination_counter}/{total_combinations}: {sharpe_ratio}")
+
+            # Update the best portfolio if current combination is better
+            if sharpe_ratio > best_sharpe:
+                best_sharpe = sharpe_ratio
+                best_combination = (pop_size, gen_count)
+                best_portfolio_overall = best_portfolio
+                best_combination_number = combination_counter
+
+            combination_counter += 1
+
+    # Save results to CSV
+    results_df = pd.DataFrame(results)
+    results_df.to_csv(results_file, index=False)
+
+    # Output the best result
+    print("\nBest combination found:")
+    print(f"Combination number: {best_combination_number}/{total_combinations}")
+    print(f"Sharpe ratio: {best_sharpe}")
+    print(f"Best portfolio weights:\n{best_portfolio_overall}")
+
+    # Save the best portfolio to CSV
+    best_portfolio_df = pd.DataFrame([best_portfolio_overall], columns=returns_df.columns)
+    best_portfolio_df.to_csv(os.path.join(script_dir, '../3.prob2_output/3.6aes_best_portfolio.csv'), index=False)
+    print(f"Best portfolio saved in '3.6aes_best_portfolio.csv'")
+
+
+# Run the evolutionary strategy algorithm
+if __name__ == "__main__":
+    run_evolutionary_strategy()
