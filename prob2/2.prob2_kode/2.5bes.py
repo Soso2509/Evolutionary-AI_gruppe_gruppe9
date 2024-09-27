@@ -2,9 +2,6 @@ import os
 import numpy as np
 import pandas as pd
 
-# Optional: Set a random seed for reproducibility
-np.random.seed(42)
-
 # Get the path of the script (the directory where this file is located)
 script_dir = os.path.dirname(os.path.abspath(__file__))
 
