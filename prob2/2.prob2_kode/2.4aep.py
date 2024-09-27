@@ -1,253 +1,275 @@
-import os           # Bibliotek for fil- og katalogoperasjoner
-import numpy as np  # Numerisk bibliotek for matematiske operasjoner og arrays
-import pandas as pd # Dataanalysebibliotek for håndtering av data i tabellform
+import os           # Library for file and directory operations
+import numpy as np  # Numerical library for mathematical operations and arrays
+import pandas as pd # Data analysis library for handling tabular data
 
-# Valgfritt: Sett en tilfeldig frø for reproduserbarhet av resultater
+# Optionally, set a random seed for reproducibility of results
 np.random.seed(42)
 
-# Finn stien til dette skriptet (katalogen hvor denne filen kjører fra)
+# Find the path to this script (the directory where the file is running from)
+# This allows for constructing relative file paths for input and output files.
 script_dir = os.path.dirname(os.path.abspath(__file__))
 
-# Definer stier for input- og output-filer basert på skriptets plassering
-# Input-filer: månedlige avkastninger og kovariansmatrise
-# Output-fil: resultater fra algoritmen
-returns_file = os.path.join(script_dir, '../3.prob2_output/3.1beregn_mnd_avk.csv')  # Fil med månedlige avkastninger
-cov_matrix_file = os.path.join(script_dir, '../3.prob2_output/3.2beregn_kovarians_matrix.csv')  # Fil med kovariansmatrise
-results_file = os.path.join(script_dir, '../3.prob2_output/3.4aep.csv')  # Fil for å lagre resultatene
+# Define paths for input and output files based on the script's location
+# Input files: monthly returns and covariance matrix
+# Output file: results from the algorithm
+returns_file = os.path.join(script_dir, '../3.prob2_output/3.1beregn_mnd_avk.csv')  # File with monthly returns
+cov_matrix_file = os.path.join(script_dir, '../3.prob2_output/3.2beregn_kovarians_matrix.csv')  # File with covariance matrix
+results_file = os.path.join(script_dir, '../3.prob2_output/3.4aep.csv')  # File to save the results
 
-# Last inn dataene fra CSV-filen med månedlige avkastninger til en pandas DataFrame
-# Bruk 'Date'-kolonnen som indeks og konverter den til datetime-objekter
+# Load data from the CSV file with monthly returns into a pandas DataFrame
+# Use the 'Date' column as the index and convert it to datetime objects for time series handling.
 returns_df = pd.read_csv(returns_file, index_col='Date', parse_dates=True)
 
-# Beregn forventet (gjennomsnittlig) avkastning for hver aksje i porteføljen
-expected_returns = returns_df.mean().values  # Hent gjennomsnittlig månedlig avkastning som en numpy array
-num_assets = len(expected_returns)  # Antall aksjer i porteføljen
+# Calculate the expected (average) return for each stock in the portfolio
+expected_returns = returns_df.mean().values  # Get average monthly returns as a numpy array
+num_assets = len(expected_returns)  # Number of stocks in the portfolio
 
-# Last inn kovariansmatrisen fra CSV-filen og konverter den til en numpy array
+# Load the covariance matrix from the CSV file and convert it to a NumPy array
 cov_matrix = pd.read_csv(cov_matrix_file, index_col=0).values
 
-# Definer risikofri rente (for eksempel 2% årlig)
-# Konverter den årlige risikofrie renten til månedlig ved å dele på 12
-risk_free_rate = 0.02 / 12  # Månedlig risikofri rente
+# Define the risk-free rate (e.g., 2% annually)
+# Convert the annual risk-free rate to monthly by dividing by 12.
+risk_free_rate = 0.02 / 12  # Monthly risk-free rate
 
-# Funksjon for å beregne porteføljens forventede avkastning og risiko (standardavvik)
+# Function to calculate the portfolio's expected return and risk (standard deviation)
 def portfolio_performance(weights, expected_returns, cov_matrix):
-    # Beregn porteføljens forventede avkastning ved å ta det veide gjennomsnittet av avkastningene
+    # Calculate the portfolio's expected return as the weighted average of the returns
     expected_return = np.dot(weights, expected_returns)
-    # Beregn porteføljens varians (risiko) ved å bruke kovariansmatrisen og porteføljevektene
+    
+    # Calculate the portfolio's variance (risk) using the covariance matrix and portfolio weights
     portfolio_variance = np.dot(weights.T, np.dot(cov_matrix, weights))
-    # Beregn standardavviket (kvadratroten av variansen)
+    
+    # Calculate the standard deviation (square root of the variance)
     portfolio_stddev = np.sqrt(portfolio_variance)
-    # Returner forventet avkastning og risiko
+    
+    # Return the expected return and risk
     return expected_return, portfolio_stddev
 
-# Fitness-funksjon: Beregn Sharpe-ratio for en gitt portefølje
+# Fitness function: Calculate the Sharpe ratio for a given portfolio
 def fitness_function(weights, expected_returns, cov_matrix, risk_free_rate):
-    # Beregn porteføljens forventede avkastning og risiko
+    # Calculate the portfolio's expected return and risk
     expected_return, portfolio_stddev = portfolio_performance(weights, expected_returns, cov_matrix)
-    # Unngå divisjon med null hvis standardavviket er null
+    
+    # Avoid division by zero if the standard deviation is zero
     if portfolio_stddev == 0:
-        return -np.inf  # Returner negativ uendelig for å indikere dårlig fitness
-    # Beregn Sharpe-ratio: (forventet avkastning - risikofri rente) / risiko
+        return -np.inf  # Return negative infinity to indicate poor fitness
+    
+    # Calculate the Sharpe ratio: (expected return - risk-free rate) / risk
     sharpe_ratio = (expected_return - risk_free_rate) / portfolio_stddev
-    # Returner Sharpe-ratioen som fitness-verdi
+    
+    # Return the Sharpe ratio as the fitness value
     return sharpe_ratio
 
-# Modifiser individrepresentasjonen til å inkludere mutasjonsstørrelse (sigma)
+# Modify the individual representation to include mutation sizes (sigma)
 def generate_portfolio(num_assets):
-    # Generer en array med tilfeldige vekter
+    # Generate an array of random weights
     weights = np.random.random(num_assets)
-    # Normaliser vektene slik at de summerer til 1 (full investert portefølje)
+    
+    # Normalize the weights so that they sum to 1 (fully invested portfolio)
     weights /= np.sum(weights)
-    # Initialiser mutasjonsstørrelser (sigma) for hver vekt med verdier mellom 0.05 og 0.2
-    sigma = np.random.uniform(0.05, 0.2, num_assets)  # Initiale mutasjonsstørrelser
-    # Returner individet som en dictionary med 'weights' og 'sigma'
+    
+    # Initialize mutation sizes (sigma) for each weight with values between 0.05 and 0.2
+    sigma = np.random.uniform(0.05, 0.2, num_assets)  # Initial mutation sizes
+    
+    # Return the individual as a dictionary with 'weights' and 'sigma'
     return {'weights': weights, 'sigma': sigma}
 
-# Generer en populasjon av porteføljer
+# Generate a population of portfolios
 def generate_population(pop_size, num_assets):
-    # Opprett en liste med 'pop_size' antall porteføljer
+    # Create a list of 'pop_size' number of portfolios
     return [generate_portfolio(num_assets) for _ in range(pop_size)]
 
-# Selv-adaptiv mutasjonsfunksjon
+# Self-adaptive mutation function
 def mutate_portfolio(individual):
     weights = individual['weights']
     sigma = individual['sigma']
     num_assets = len(weights)
     
-    # Mutasjonsparametere for selv-adaptiv mutasjon
-    tau = 1 / np.sqrt(2 * np.sqrt(num_assets))  # Global læringsrate
-    tau_prime = 1 / np.sqrt(2 * num_assets)     # Individuell læringsrate
+    # Mutation parameters for self-adaptive mutation
+    tau = 1 / np.sqrt(2 * np.sqrt(num_assets))  # Global learning rate
+    tau_prime = 1 / np.sqrt(2 * num_assets)     # Individual learning rate
     
-    # Oppdater sigma (mutasjonsstørrelser)
+    # Update sigma (mutation sizes)
     sigma_prime = sigma * np.exp(
-        tau_prime * np.random.normal() +       # Global komponent
-        tau * np.random.normal(size=num_assets)  # Individuell komponent
+        tau_prime * np.random.normal() +       # Global component
+        tau * np.random.normal(size=num_assets)  # Individual component
     )
-    # Sikre at sigma holder seg innenfor grenser
-    sigma_prime = np.clip(sigma_prime, 1e-6, 1)  # Unngå null eller negative verdier
     
-    # Muter vekter
+    # Ensure sigma stays within bounds
+    sigma_prime = np.clip(sigma_prime, 1e-6, 1)  # Avoid zero or negative values
+    
+    # Mutate weights
     weights_prime = weights + sigma_prime * np.random.normal(size=num_assets)
-    # Klipp vektene til å være mellom 0 og 1 (ingen negative vekter)
+    
+    # Clip the weights to be between 0 and 1 (no negative weights)
     weights_prime = np.clip(weights_prime, 0, 1)
-    # Unngå at alle vekter er null ved å re-initialisere om nødvendig
+    
+    # Avoid all weights being zero by reinitializing if necessary
     if np.sum(weights_prime) == 0:
-        weights_prime = generate_portfolio(num_assets)['weights']  # Re-initialiser
+        weights_prime = generate_portfolio(num_assets)['weights']  # Reinitialize
     else:
-        # Normaliser vektene slik at de summerer til 1
+        # Normalize the weights so that they sum to 1
         weights_prime /= np.sum(weights_prime)
     
-    # Returner det muterte individet med oppdaterte vekter og sigma
+    # Return the mutated individual with updated weights and sigma
     return {'weights': weights_prime, 'sigma': sigma_prime}
 
-# Turneringseleksjonsfunksjon
+# Tournament selection function
 def tournament_selection(population, fitness_scores, tournament_size):
     selected = []
     pop_size = len(population)
-    # For hver posisjon i populasjonen
+    
+    # For each position in the population
     for _ in range(pop_size):
-        # Velg individer for turneringen tilfeldig
+        # Select individuals for the tournament randomly
         participants = np.random.choice(pop_size, tournament_size, replace=False)
-        # Hent fitness-score for deltakerne
+        
+        # Get the fitness scores for the participants
         participant_fitness = fitness_scores[participants]
-        # Finn indeksen til deltakeren med høyest fitness
+        
+        # Find the index of the participant with the highest fitness
         winner_idx = participants[np.argmax(participant_fitness)]
-        # Legg til vinneren i listen over valgte individer
+        
+        # Add the winner to the list of selected individuals
         selected.append(population[winner_idx])
-    # Returner listen over valgte foreldre
+    
+    # Return the list of selected parents
     return selected
 
-# Elitisme-funksjon
+# Elitism function
 def get_elites(population, fitness_scores, num_elites):
-    # Sorter indeksene basert på fitness-score i stigende rekkefølge
-    elite_indices = np.argsort(fitness_scores)[-num_elites:]  # Velg de beste individene
-    # Hent de beste individene fra populasjonen
+    # Sort the indices based on fitness scores in ascending order
+    elite_indices = np.argsort(fitness_scores)[-num_elites:]  # Select the best individuals
+    
+    # Get the best individuals from the population
     elites = [population[i] for i in elite_indices]
-    # Returner listen over eliteindivider
+    
+    # Return the list of elite individuals
     return elites
 
-# Avansert Evolutionary Programming-algoritme
+# Advanced Evolutionary Programming algorithm
 def advanced_evolutionary_programming(
     expected_returns, cov_matrix, population_size, num_generations,
     risk_free_rate, tournament_size=3, num_elites=1
 ):
     num_assets = len(expected_returns)
-    # Generer startpopulasjon
+    
+    # Generate the initial population
     population = generate_population(population_size, num_assets)
     
-    # Start evolusjonen over antall generasjoner
+    # Start evolution over a number of generations
     for generation in range(num_generations):
-        # Evaluer fitness for hver portefølje
+        # Evaluate fitness for each portfolio
         fitness_scores = np.array([
             fitness_function(ind['weights'], expected_returns, cov_matrix, risk_free_rate)
             for ind in population
         ])
         
-        # Elitisme: Hent eliteindivider
+        # Elitism: Get elite individuals
         elites = get_elites(population, fitness_scores, num_elites)
         
-        # Seleksjon: Turneringseleksjon
+        # Selection: Tournament selection
         selected_parents = tournament_selection(population, fitness_scores, tournament_size)
         
-        # Mutasjon: Opprett avkom
+        # Mutation: Create offspring
         offspring = [mutate_portfolio(parent) for parent in selected_parents]
         
-        # Dann ny populasjon ved å kombinere eliter og avkom
+        # Form the new population by combining elites and offspring
         population = elites + offspring[:population_size - num_elites]
     
-    # Endelig evaluering etter siste generasjon
+    # Final evaluation after the last generation
     final_fitness_scores = np.array([
         fitness_function(ind['weights'], expected_returns, cov_matrix, risk_free_rate)
         for ind in population
     ])
-    # Finn indeksen til individet med høyest fitness
+    
+    # Find the index of the individual with the highest fitness
     best_idx = np.argmax(final_fitness_scores)
     best_individual = population[best_idx]
     
-    # Returner den beste porteføljens vekter og Sharpe-ratio
+    # Return the best portfolio's weights and Sharpe ratio
     return best_individual['weights'], final_fitness_scores[best_idx]
 
-# Hovedfunksjon for å kjøre den avanserte EP-algoritmen
+# Main function to run the advanced EP algorithm
 def run_advanced_ep():
-    # Parameterområder for testing
-    population_sizes = [100, 200, 300]     # Populasjonsstørrelser å teste
-    generation_counts = [100, 200, 300]    # Antall generasjoner å teste
-    tournament_sizes = [2, 3, 5]           # Turneringsstørrelser å teste
-    num_elites_list = [1, 2, 5]            # Antall eliter å teste
+    # Parameter ranges for testing
+    population_sizes = [100, 200, 300]     # Population sizes to test
+    generation_counts = [100, 200, 300]    # Number of generations to test
+    tournament_sizes = [2, 3, 5]           # Tournament sizes to test
+    num_elites_list = [1, 2, 5]            # Number of elites to test
     
-    # Beregn totalt antall kombinasjoner
+    # Calculate the total number of combinations
     total_combinations = (
         len(population_sizes) *
         len(generation_counts) *
         len(tournament_sizes) *
         len(num_elites_list)
     )
-    print(f"Totalt antall kombinasjoner å teste: {total_combinations}")
+    print(f"Total number of combinations to test: {total_combinations}")
     
-    combination_counter = 1  # Teller for å holde styr på hvilken kombinasjon vi er på
-    best_sharpe = -np.inf    # Variabel for å holde styr på den beste Sharpe-ratioen
-    best_combination = None  # Variabel for å lagre den beste kombinasjonen av parametere
-    best_portfolio_overall = None  # Variabel for å lagre den beste porteføljen
-    best_combination_number = None  # Variabel for å holde styr på det beste kombinasjonsnummeret
-    results = []  # Liste for å samle inn alle resultater
+    combination_counter = 1  # Counter to keep track of the current combination
+    best_sharpe = -np.inf    # Variable to track the best Sharpe ratio
+    best_combination = None  # Variable to store the best combination of parameters
+    best_portfolio_overall = None  # Variable to store the best portfolio
+    best_combination_number = None  # Variable to track the best combination number
+    results = []  # List to collect all results
     
-    # Test alle kombinasjoner
+    # Test all combinations
     for pop_size in population_sizes:
         for gen_count in generation_counts:
             for tour_size in tournament_sizes:
                 for num_elites in num_elites_list:
-                    print(f"Kjører kombinasjon {combination_counter}/{total_combinations}: "
-                          f"populasjonsstørrelse={pop_size}, generasjoner={gen_count}, "
-                          f"turneringsstørrelse={tour_size}, antall eliter={num_elites}")
+                    print(f"Running combination {combination_counter}/{total_combinations}: "
+                          f"population size={pop_size}, generations={gen_count}, "
+                          f"tournament size={tour_size}, number of elites={num_elites}")
                     
-                    # Kjør algoritmen med den nåværende kombinasjonen av parametere
+                    # Run the algorithm with the current parameter combination
                     best_portfolio, sharpe_ratio = advanced_evolutionary_programming(
                         expected_returns, cov_matrix, pop_size, gen_count, risk_free_rate,
                         tournament_size=tour_size, num_elites=num_elites
                     )
                     
-                    print(f"Sharpe-ratio for kombinasjon {combination_counter}/{total_combinations}: {sharpe_ratio}")
+                    print(f"Sharpe ratio for combination {combination_counter}/{total_combinations}: {sharpe_ratio}")
                     
-                    # Lagre resultatene i listen
+                    # Store the results in the list
                     results.append({
-                        'kombinasjonsnummer': combination_counter,
-                        'populasjonsstørrelse': pop_size,
-                        'generasjoner': gen_count,
-                        'turneringsstørrelse': tour_size,
-                        'antall_eliter': num_elites,
+                        'combination_number': combination_counter,
+                        'population_size': pop_size,
+                        'generations': gen_count,
+                        'tournament_size': tour_size,
+                        'number_of_elites': num_elites,
                         'sharpe_ratio': sharpe_ratio
                     })
                     
-                    # Lagre den beste kombinasjonen
+                    # Save the best combination
                     if sharpe_ratio > best_sharpe:
                         best_sharpe = sharpe_ratio
                         best_combination = (pop_size, gen_count, tour_size, num_elites)
                         best_portfolio_overall = best_portfolio
                         best_combination_number = combination_counter
                         
-                    # Oppdater kombinasjonsnummeret
+                    # Update the combination number
                     combination_counter += 1
     
-    # Konverter resultatene til en DataFrame
+    # Convert the results to a DataFrame
     results_df = pd.DataFrame(results)
     
-    # Lagre resultatene til en CSV-fil
+    # Save the results to a CSV file
     results_df.to_csv(results_file, index=False)
     
-    # Skriv ut den beste kombinasjonen funnet
-    print("\nBeste kombinasjon funnet:")
-    print(f"Kombinasjonsnummer: {best_combination_number}/{total_combinations}")
-    print(f"Sharpe-ratio: {best_sharpe}")
-    print(f"Populasjonsstørrelse: {best_combination[0]}, Generasjoner: {best_combination[1]}, "
-          f"Turneringsstørrelse: {best_combination[2]}, Antall eliter: {best_combination[3]}")
-    print(f"Beste porteføljevekter:\n{best_portfolio_overall}")
+    # Print the best combination found
+    print("\nBest combination found:")
+    print(f"Combination number: {best_combination_number}/{total_combinations}")
+    print(f"Sharpe ratio: {best_sharpe}")
+    print(f"Population size: {best_combination[0]}, Generations: {best_combination[1]}, "
+          f"Tournament size: {best_combination[2]}, Number of elites: {best_combination[3]}")
+    print(f"Best portfolio weights:\n{best_portfolio_overall}")
     
-    # Lagre den beste porteføljen til en CSV-fil
+    # Save the best portfolio to a CSV file
     best_portfolio_df = pd.DataFrame([best_portfolio_overall], columns=returns_df.columns)
     best_portfolio_df.to_csv(os.path.join(script_dir, '../3.prob2_output/3.4aep_best_portfolio.csv'), index=False)
-    print(f"Beste portefølje lagret i '3.4aep_best_portfolio.csv'")
+    print(f"Best portfolio saved to '3.4aep_best_portfolio.csv'")
 
-# Kjør den avanserte EP-algoritmen
+# Run the advanced EP algorithm
 if __name__ == "__main__":
     run_advanced_ep()
