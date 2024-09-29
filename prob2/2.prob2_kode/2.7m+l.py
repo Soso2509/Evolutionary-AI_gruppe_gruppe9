@@ -105,17 +105,20 @@ def select_best_individuals(population, expected_returns, cov_matrix, risk_free_
     return sorted_population[:num_to_select]
 
 
-def run_MuPlussLambda_algorithm(pop_size_mu, pop_size_lambda,num_generations, risk_free_rate):
+def run_MuPlussLambda_algorithm(pop_size_mu, pop_size_lambda,num_generations, risk_free_rate,combination_number):
     #Generate the initial population of Mu, μ (parents)
     population = generate_population(pop_size_mu, num_assets)
 
     # Starting with lowest possible Sharpe ratio
     runs_best_sharpe_ratio = -np.inf
 
+    # Track Sharpe ratios for each generation
+    generation_sharpe_ratios = []
+
     # For each generation in the given number of generations
     for generation in range(num_generations):
         # Generate Lambda, λ, children by mutating the parent population
-        offspring = [mutate_portfolio(population[np.random.randint(0, pop_size_mu)][0], population[np.random.randint(0, pop_size_mu)][1])for _ in range(pop_size_lambda)]
+        offspring = [mutate_portfolio(population[np.random.randint(0, pop_size_mu)][0],population[np.random.randint(0, pop_size_mu)][1]) for _ in range(pop_size_lambda)]
 
         # Combining the parent populating and the children population into one
         combined_population = np.vstack((population, offspring))
@@ -127,10 +130,17 @@ def run_MuPlussLambda_algorithm(pop_size_mu, pop_size_lambda,num_generations, ri
         generation_best_sharpe_ratio = fitness_function(population[0][0], expected_returns, cov_matrix, risk_free_rate)
         generation_best_portfolio = population[0][0]
 
-        # Updating the runs best Sharpe ratio and portfolio if the best in this generations is better
+        # Update the runs best Sharpe ratio and portfolio if the best in this generation is better
         if generation_best_sharpe_ratio > runs_best_sharpe_ratio:
             runs_best_sharpe_ratio = generation_best_sharpe_ratio
             runs_best_portfolio = generation_best_portfolio
+
+       # Save Sharpe ratio along with generation number and combination number
+        generation_sharpe_ratios.append({
+            'combination_number': combination_number,
+            'generation': generation + 1,
+            'sharpe_ratio': generation_best_sharpe_ratio
+        })
 
         # Calculate the expected returns and standard deviation for the generations best portfolio
         generation_best_expected_return, generation_best_portfolio_stddev = portfolio_performance(generation_best_portfolio, expected_returns, cov_matrix)
@@ -141,7 +151,7 @@ def run_MuPlussLambda_algorithm(pop_size_mu, pop_size_lambda,num_generations, ri
               f"Expected Return = {generation_best_expected_return:.4f}, "
               f"Portfolio Std Dev = {generation_best_portfolio_stddev:.4f}")
 
-    return runs_best_portfolio, runs_best_sharpe_ratio
+    return runs_best_portfolio, runs_best_sharpe_ratio,generation_sharpe_ratios
 
 
 # Define the population, Mu and Lambda, sizes, and generation counts to test
@@ -164,6 +174,9 @@ best_portfolio_overall = None # Track best portfolio weights
 
 results = [] # Track results for all generations
 
+# Tracking the generation data
+all_generation_data = []
+
 
 # Iterates through the population sizes and generation
 for pop_size_mu in population_sizes_mu:
@@ -172,11 +185,12 @@ for pop_size_mu in population_sizes_mu:
             print(
                 f"Kjører kombinasjon {combination_counter}/{total_combinations}: pop_size_mu={pop_size_mu}, pop_size_lambda={pop_size_lambda} , gen_count={gen_count}")
 
-            # Runs the mu+lambda function for the current parameters
-            best_portfolio, sharpe_ratio = run_MuPlussLambda_algorithm(pop_size_mu, pop_size_lambda, gen_count, risk_free_rate)
+            # Run the mu+lambda function for the current parameters
+            best_portfolio, sharpe_ratio, generation_data = run_MuPlussLambda_algorithm(pop_size_mu, pop_size_lambda, gen_count, risk_free_rate, combination_counter)
+
             print(f"Sharpe-ratio for kombinasjon {combination_counter}/{total_combinations}: {sharpe_ratio}")
 
-            # Collecting the values for each iteration in "results"
+           # Collecting the values for each iteration in "results"
             results.append({
                 'combination_number': combination_counter,
                 'pop_size_mu': pop_size_mu,
@@ -184,10 +198,12 @@ for pop_size_mu in population_sizes_mu:
                 'gen_count': gen_count,
                 'sharpe_ratio': sharpe_ratio,
                 'best_portfolio_weights': best_portfolio.tolist()
-
             })
 
-            # Updates the best portfolio if current combination is better
+             # Append the data for all generations in this combination
+            all_generation_data.extend(generation_data)
+
+             # Update the best portfolio if current combination is better
             if sharpe_ratio > best_sharpe:
                 best_sharpe = sharpe_ratio
                 best_combination = (pop_size_mu, pop_size_lambda, gen_count)
@@ -200,6 +216,12 @@ for pop_size_mu in population_sizes_mu:
 results_df = pd.DataFrame(results)
 results_df.to_csv(results_file, index=False)
 
+# Create a DataFrame from the collected data
+generation_df = pd.DataFrame(all_generation_data)
+
+# Save the DataFrame to a CSV file
+generation_csv_path = os.path.join(script_dir, '../3.prob2_output/3.7sharpe_ratios_per_generation.csv')
+generation_df.to_csv(generation_csv_path, index=False)
 
 # Output the best results
 print("\nBest combination found:")
@@ -212,18 +234,3 @@ print(f"Best portfolio weights:\n{best_portfolio_overall}")
 best_portfolio_df = pd.DataFrame([best_portfolio], columns=returns_df.columns)
 best_portfolio_df.to_csv(os.path.join(script_dir, '../3.prob2_output/3.7m+l_best_portfolio.csv'), index=False)
 print(f"\nBeste portefølje lagret i '3.7m+l_best_portfolio.csv'")
-
-
-
-
-# Visualizing the best portfolio in /4.prob2_visual/3.7_best_portfolio_allocation.png
-def plot_best_portfolio_weights(best_portfolio_df):
-    # Plot the asset allocation of the best portfolio
-    best_portfolio_df.T.plot(kind='bar', legend=False, figsize=(10, 6))
-    plt.title('Best Portfolio Asset Allocation')
-    plt.ylabel('Weight')
-    plt.grid(True)
-    plt.savefig(os.path.join(script_dir, '../4.prob2_visual/3.7_best_portfolio_allocation.png'), dpi=300, bbox_inches='tight')
-    plt.close()
-
-plot_best_portfolio_weights(best_portfolio_df)
