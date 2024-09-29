@@ -138,6 +138,7 @@ def evolutionary_strategy(expected_returns, cov_matrix, population_size, num_gen
             results_per_generation.append({
                 'generation': generation,
                 'combination_number': None,
+                'population_size': population_size,  # Save the population size for each iteration
                 'sharpe_ratio': fitness_scores[idx],  # Store Sharpe ratio
                 'weights': individual['weights']
             })
@@ -240,7 +241,6 @@ def run_evolutionary_strategy():
     best_portfolio_df = pd.DataFrame([best_portfolio_overall], columns=returns_df.columns)
     best_portfolio_df.to_csv(os.path.join(script_dir, '../3.prob2_output/3.6aes_best_portfolio.csv'), index=False)
     print(f"Best portfolio saved in '3.6aes_best_portfolio.csv'")
-
 
 # Run the evolutionary strategy algorithm
 if __name__ == "__main__":
