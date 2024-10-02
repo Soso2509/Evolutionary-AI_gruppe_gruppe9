@@ -15,7 +15,6 @@ script_dir = os.path.dirname(os.path.abspath(__file__))
 returns_file = os.path.join(script_dir, '../3.prob2_output/3.1beregn_mnd_avk.csv')  # File with monthly returns
 cov_matrix_file = os.path.join(script_dir, '../3.prob2_output/3.2beregn_kovarians_matrix.csv')  # File with covariance matrix
 results_file = os.path.join(script_dir, '../3.prob2_output/3.4aep.csv')  # File to save the results
-best_portfolio_file = os.path.join(script_dir, '../3.prob2_output/3.4aep_best_portfolio.csv')  # File to save the best portfolio
 
 # Load data from the CSV file with monthly returns into a pandas DataFrame
 # Use the 'Date' column as the index and convert it to datetime objects for time series handling.
@@ -194,17 +193,21 @@ def advanced_evolutionary_programming(
 # Main function to run the advanced EP algorithm
 def run_advanced_ep():
     # Parameter ranges for testing
-    population_sizes = [100, 200, 300]     # Population sizes to test
-    generation_counts = [100, 200, 300]    # Number of generations to test
+    population_sizes = [20, 50, 100]     # Population sizes to test
+    generation_counts = [50, 100, 200]    # Number of generations to test
     tournament_sizes = [2, 3, 5]           # Tournament sizes to test
     num_elites_list = [1, 2, 5]            # Number of elites to test
+    initial_mutation_rates = [0.01, 0.05, 0.1]  # Initial mutation rates for testing
+    alphas = [0.1, 0.3, 0.5]  # Values for alpha to test
     
     # Calculate the total number of combinations
     total_combinations = (
         len(population_sizes) *
         len(generation_counts) *
         len(tournament_sizes) *
-        len(num_elites_list)
+        len(num_elites_list) *
+        len(initial_mutation_rates) *
+        len(alphas)
     )
     print(f"Total number of combinations to test: {total_combinations}")
     
@@ -220,43 +223,46 @@ def run_advanced_ep():
         for gen_count in generation_counts:
             for tour_size in tournament_sizes:
                 for num_elites in num_elites_list:
-                    print(f"Running combination {combination_counter}/{total_combinations}: "
-                          f"population size={pop_size}, generations={gen_count}, "
-                          f"tournament size={tour_size}, number of elites={num_elites}")
-                    
-                    # Run the algorithm with the current parameter combination
-                    best_portfolio, sharpe_ratio = advanced_evolutionary_programming(
-                        expected_returns, cov_matrix, pop_size, gen_count, risk_free_rate,
-                        tournament_size=tour_size, num_elites=num_elites
-                    )
-                    
-                    print(f"Sharpe ratio for combination {combination_counter}/{total_combinations}: {sharpe_ratio}")
-                    
-                    # Store the results in the list
-                    results.append({
-                        'combination_number': combination_counter,
-                        'population_size': pop_size,
-                        'generations': gen_count,
-                        'tournament_size': tour_size,
-                        'number_of_elites': num_elites,
-                        'sharpe_ratio': sharpe_ratio
-                    })
-                    
-                    # Save the best combination
-                    if sharpe_ratio > best_sharpe:
-                        best_sharpe = sharpe_ratio
-                        best_combination = (pop_size, gen_count, tour_size, num_elites)
-                        best_portfolio_overall = best_portfolio
-                        best_combination_number = combination_counter
-                        
-                    # Update the combination number
-                    combination_counter += 1
+                    for init_mut_rate in initial_mutation_rates:
+                        for alpha in alphas:
+                            print(f"Running combination {combination_counter}/{total_combinations}: "
+                                  f"population size={pop_size}, generations={gen_count}, "
+                                  f"tournament size={tour_size}, number of elites={num_elites}, "
+                                  f"initial mutation rate={init_mut_rate}, alpha={alpha}")
+                            
+                            # Run the algorithm with the current parameter combination
+                            best_portfolio, sharpe_ratio = advanced_evolutionary_programming(
+                                expected_returns, cov_matrix, pop_size, gen_count, risk_free_rate,
+                                tournament_size=tour_size, num_elites=num_elites
+                            )
+                            
+                            print(f"Sharpe ratio for combination {combination_counter}/{total_combinations}: {sharpe_ratio}")
+                            
+                            # Store the results in the list
+                            results.append({
+                                'combination_number': combination_counter,
+                                'pop_size': pop_size,
+                                'gen_count': gen_count,
+                                'initial_mutation_rate': init_mut_rate,
+                                'alpha': alpha,
+                                'sharpe_ratio': sharpe_ratio,
+                                'best_portfolio_weights': best_portfolio.tolist()
+                            })
+                            
+                            # Save the best combination
+                            if sharpe_ratio > best_sharpe:
+                                best_sharpe = sharpe_ratio
+                                best_combination = (pop_size, gen_count, tour_size, num_elites, init_mut_rate, alpha)
+                                best_portfolio_overall = best_portfolio
+                                best_combination_number = combination_counter
+                                
+                            # Update the combination number
+                            combination_counter += 1
     
     # Convert the results to a DataFrame
     results_df = pd.DataFrame(results)
     
-    # Save the results to a CSV file in the correct format
-    # Ensure proper formatting, such as saving without index and with clear column names
+    # Save the results to a CSV file
     results_df.to_csv(results_file, index=False)
     
     # Print the best combination found
@@ -264,14 +270,14 @@ def run_advanced_ep():
     print(f"Combination number: {best_combination_number}/{total_combinations}")
     print(f"Sharpe ratio: {best_sharpe}")
     print(f"Population size: {best_combination[0]}, Generations: {best_combination[1]}, "
-          f"Tournament size: {best_combination[2]}, Number of elites: {best_combination[3]}")
+          f"Tournament size: {best_combination[2]}, Number of elites: {best_combination[3]}, "
+          f"Initial mutation rate: {best_combination[4]}, Alpha: {best_combination[5]}")
     print(f"Best portfolio weights:\n{best_portfolio_overall}")
     
-    # Save the best portfolio to a CSV file with correct formatting
-    # The best portfolio will be saved with column names matching the stock names
+    # Save the best portfolio to a CSV file
     best_portfolio_df = pd.DataFrame([best_portfolio_overall], columns=returns_df.columns)
-    best_portfolio_df.to_csv(best_portfolio_file, index=False)
-    print(f"Best portfolio saved to '{best_portfolio_file}'")
+    best_portfolio_df.to_csv(os.path.join(script_dir, '../3.prob2_output/3.4aep_best_portfolio.csv'), index=False)
+    print(f"Best portfolio saved to '3.4aep_best_portfolio.csv'")
 
 # Run the advanced EP algorithm
 if __name__ == "__main__":
