@@ -1,6 +1,6 @@
-import os          # Library for file and directory operations
-import numpy as np  # Numerical library for mathematical operations and arrays
-import pandas as pd # Data analysis library for handling tabular data
+import os
+import numpy as np
+import pandas as pd
 
 # Find the absolute path to the directory where this script is located
 # This is useful to construct relative file paths based on the script's location.
@@ -8,10 +8,11 @@ script_dir = os.path.dirname(os.path.abspath(__file__))
 
 # Define paths for input and output files based on the script's location
 # Input files: monthly returns and covariance matrix
-# Output file: results from the evolutionary algorithm
+# Output files: results and the best portfolio
 returns_file = os.path.join(script_dir, '../3.prob2_output/3.1beregn_mnd_avk.csv')  # File with calculated monthly returns
 cov_matrix_file = os.path.join(script_dir, '../3.prob2_output/3.2beregn_kovarians_matrix.csv')  # File with the covariance matrix
 results_file = os.path.join(script_dir, '../3.prob2_output/3.3bep.csv')  # File to store results
+best_portfolio_file = os.path.join(script_dir, '../3.prob2_output/3.3bep_best_portfolio.csv')  # File to store the best portfolio
 
 # Read the monthly returns from the CSV file into a pandas DataFrame
 # The 'Date' column is used as the index, and dates are converted to datetime objects.
@@ -68,14 +69,8 @@ def generate_portfolio(num_assets):
 
 # Function to generate a population of random portfolios
 def generate_population(pop_size, num_assets):
-    population = []
-    
     # Generate 'pop_size' number of portfolios
-    for _ in range(pop_size):
-        population.append(generate_portfolio(num_assets))
-    
-    # Convert the population to a NumPy array and return it
-    return np.array(population)
+    return np.array([generate_portfolio(num_assets) for _ in range(pop_size)])
 
 # Function to mutate a portfolio to introduce variation
 def mutate_portfolio(portfolio, mutation_rate=0.1):
@@ -109,20 +104,24 @@ def evolutionary_programming(expected_returns, cov_matrix, population_size, num_
     # Generate the initial population of portfolios
     population = generate_population(population_size, num_assets)
     
+    # Track the history of fitness scores across generations
+    history = []
+    
     # Start the evolution process for a number of generations
     for generation in range(num_generations):
         # Calculate the fitness (Sharpe ratio) for each portfolio in the population
         fitness_scores = np.array([fitness_function(p, expected_returns, cov_matrix, risk_free_rate) for p in population])
+        
+        # Store the generation, population index, and corresponding fitness score in the history
+        history.extend([(generation, idx, population_size, num_generations, mutation_rate, sharpe_ratio)
+                        for idx, sharpe_ratio in enumerate(fitness_scores)])
         
         # Select the best portfolios to carry over to the next generation
         num_to_select = population_size // 2  # Keep half of the population
         best_portfolios = select_best(population, fitness_scores, num_to_select)
         
         # Mutate the best portfolios to create variation
-        next_generation = []
-        for portfolio in best_portfolios:
-            next_generation.append(portfolio)  # Keep the original
-            next_generation.append(mutate_portfolio(portfolio, mutation_rate))  # Add the mutated version
+        next_generation = [mutate_portfolio(p, mutation_rate) for p in best_portfolios] * 2
         
         # Update the population with the next generation
         population = np.array(next_generation)
@@ -130,28 +129,20 @@ def evolutionary_programming(expected_returns, cov_matrix, population_size, num_
     # After all generations, find the best portfolio in the final population
     final_fitness_scores = np.array([fitness_function(p, expected_returns, cov_matrix, risk_free_rate) for p in population])
     best_portfolio = population[np.argmax(final_fitness_scores)]
+    best_sharpe = np.max(final_fitness_scores)
     
-    # Return the best portfolio and its Sharpe ratio
-    return best_portfolio, np.max(final_fitness_scores)
+    # Return the best portfolio, the best Sharpe ratio, and the history of results
+    return best_portfolio, best_sharpe, history
 
 # Define parameter ranges for testing the algorithm
-population_sizes = [50, 100, 150, 200, 250, 300]  # Different population sizes
-generation_counts = [50, 100, 150, 200, 250, 300]  # Different number of generations
-mutation_rates = [0.01, 0.05, 0.1, 0.15, 0.20]  # Different mutation rates
-
-# Calculate the total number of parameter combinations to test
-total_combinations = len(population_sizes) * len(generation_counts) * len(mutation_rates)
-
-# Print the total number of combinations to the console
-print(f"Total combinations to test: {total_combinations}")
+population_sizes = [50, 100, 150]  # Different population sizes
+generation_counts = [50, 100]  # Different number of generations
+mutation_rates = [0.01, 0.05]  # Different mutation rates
 
 # Initialize variables to track the best combination and Sharpe ratio
 best_sharpe = -np.inf  # Start with negative infinity to ensure any positive Sharpe ratio is better
-best_combination = None  # Track the parameters for the best combination
-best_combination_number = None  # Track the combination number for the best result
-
-# Initialize a list to collect all results from the tests
-results = []
+best_portfolio_overall = None  # Variable to store the best portfolio
+results = []  # Initialize a list to collect all results
 
 # Start the test over all parameter combinations
 combination_counter = 1  # Counter to keep track of the combination number
@@ -161,31 +152,29 @@ for pop_size in population_sizes:
     for gen_count in generation_counts:
         for mut_rate in mutation_rates:
             # Print information about the current combination
-            print(f"Running combination {combination_counter}/{total_combinations}: pop_size={pop_size}, gen_count={gen_count}, mut_rate={mut_rate}")
+            print(f"Running combination {combination_counter}: pop_size={pop_size}, gen_count={gen_count}, mut_rate={mut_rate}")
             
             # Run the evolutionary algorithm with the current parameters
-            best_portfolio, sharpe_ratio = evolutionary_programming(expected_returns, cov_matrix, pop_size, gen_count, risk_free_rate, mut_rate)
+            best_portfolio, sharpe_ratio, history = evolutionary_programming(expected_returns, cov_matrix, pop_size, gen_count, risk_free_rate, mut_rate)
             
-            # Print the Sharpe ratio for this combination
-            print(f"Sharpe ratio for combination {combination_counter}/{total_combinations}: {sharpe_ratio}")
+            # Store the results from the history into the results list
+            for generation, portfolio_idx, population_size, generations, mutation_rate, sharpe in history:
+                results.append({
+                    'combination_number': combination_counter,  # Combination number
+                    'generation': generation,
+                    'population_size': population_size,
+                    'generations': generations,
+                    'mutation_rate': mutation_rate,
+                    'portfolio_index': portfolio_idx,
+                    'sharpe_ratio': sharpe
+                })
             
-            # Store the results in the results list, including the combination number
-            results.append({
-                'combination_number': combination_counter,  # Combination number
-                'pop_size': pop_size,
-                'gen_count': gen_count,
-                'mut_rate': mut_rate,
-                'sharpe_ratio': sharpe_ratio
-            })
-            
-            # Check if this Sharpe ratio is better than the best one so far
+            # Update the best portfolio if this Sharpe ratio is better than the current best
             if sharpe_ratio > best_sharpe:
-                # Update the best Sharpe ratio and parameters
                 best_sharpe = sharpe_ratio
-                best_combination = (pop_size, gen_count, mut_rate)
-                best_combination_number = combination_counter  # Save the combination number
-                
-            # Update the combination number
+                best_portfolio_overall = best_portfolio  # Store the best portfolio
+            
+            # Update the combination counter for the next run
             combination_counter += 1
 
 # Convert the results list to a pandas DataFrame for easier storage and analysis
@@ -194,16 +183,13 @@ results_df = pd.DataFrame(results)
 # Save the results to a CSV file without including the DataFrame index
 results_df.to_csv(results_file, index=False)
 
-# After all combinations are tested, print the result for the best combination
-print("\nBest combination found")
-print(f"Combination number: {best_combination_number}/{total_combinations}")
-print(f"Sharpe ratio: {best_sharpe}")
-print(f"Population size: {best_combination[0]}, Number of generations: {best_combination[1]}, Mutation rate: {best_combination[2]}")
-print(f"Best portfolio weights: {best_portfolio}")
+# Print a message indicating that the results have been saved
+print(f"Results saved to {results_file}")
 
-# Save the best portfolio (weights) to a CSV file for further analysis
-best_portfolio_df = pd.DataFrame([best_portfolio], columns=returns_df.columns)  # Use stock names as column headers
-best_portfolio_df.to_csv(os.path.join(script_dir, '../3.prob2_output/3.3bep_best_portfolio.csv'), index=False)
+# Save the best portfolio to a separate CSV file for further analysis
+# Convert the best portfolio to a DataFrame with stock names as column headers
+best_portfolio_df = pd.DataFrame([best_portfolio_overall], columns=returns_df.columns)
+best_portfolio_df.to_csv(best_portfolio_file, index=False)
 
 # Print a message indicating that the best portfolio has been saved
-print(f"Best portfolio saved to '3.3bep_best_portfolio.csv'")
+print(f"Best portfolio saved to {best_portfolio_file}")

@@ -15,6 +15,7 @@ script_dir = os.path.dirname(os.path.abspath(__file__))
 returns_file = os.path.join(script_dir, '../3.prob2_output/3.1beregn_mnd_avk.csv')  # File with monthly returns
 cov_matrix_file = os.path.join(script_dir, '../3.prob2_output/3.2beregn_kovarians_matrix.csv')  # File with covariance matrix
 results_file = os.path.join(script_dir, '../3.prob2_output/3.4aep.csv')  # File to save the results
+best_portfolio_file = os.path.join(script_dir, '../3.prob2_output/3.4aep_best_portfolio.csv')  # File to save the best portfolio
 
 # Load data from the CSV file with monthly returns into a pandas DataFrame
 # Use the 'Date' column as the index and convert it to datetime objects for time series handling.
@@ -254,7 +255,8 @@ def run_advanced_ep():
     # Convert the results to a DataFrame
     results_df = pd.DataFrame(results)
     
-    # Save the results to a CSV file
+    # Save the results to a CSV file in the correct format
+    # Ensure proper formatting, such as saving without index and with clear column names
     results_df.to_csv(results_file, index=False)
     
     # Print the best combination found
@@ -265,10 +267,11 @@ def run_advanced_ep():
           f"Tournament size: {best_combination[2]}, Number of elites: {best_combination[3]}")
     print(f"Best portfolio weights:\n{best_portfolio_overall}")
     
-    # Save the best portfolio to a CSV file
+    # Save the best portfolio to a CSV file with correct formatting
+    # The best portfolio will be saved with column names matching the stock names
     best_portfolio_df = pd.DataFrame([best_portfolio_overall], columns=returns_df.columns)
-    best_portfolio_df.to_csv(os.path.join(script_dir, '../3.prob2_output/3.4aep_best_portfolio.csv'), index=False)
-    print(f"Best portfolio saved to '3.4aep_best_portfolio.csv'")
+    best_portfolio_df.to_csv(best_portfolio_file, index=False)
+    print(f"Best portfolio saved to '{best_portfolio_file}'")
 
 # Run the advanced EP algorithm
 if __name__ == "__main__":
