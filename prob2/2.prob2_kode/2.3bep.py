@@ -65,11 +65,32 @@ def evolutionary_programming(expected_returns, cov_matrix, population_size, num_
     num_assets = len(expected_returns)  # Antall aksjer i porteføljen
     population = generate_population(population_size, num_assets)  # Generer initial populasjon
 
+    generation_results = []  # Liste for å lagre resultater for hver generasjon
+
     # Start evolusjonsprosessen
     for generation in range(num_generations):
         fitness_scores = np.array([fitness_function(p, expected_returns, cov_matrix, risk_free_rate) for p in population])
+        
+        # Finn den beste porteføljen i den nåværende generasjonen
+        best_index = np.argmax(fitness_scores)
+        best_sharpe_ratio = fitness_scores[best_index]
+        best_portfolio = population[best_index]
+        
+        # Lagre resultatet for denne generasjonen
+        generation_results.append({
+            'generation': generation + 1,  # Lagre generasjonsnummeret
+            'combination_number': combination_counter,
+            'pop_size': population_size,
+            'gen_count': num_generations,
+            'mut_rate': mutation_rate,
+            'sharpe_ratio': best_sharpe_ratio
+        })
+        
+        # Velg de beste porteføljene basert på fitness (Sharpe-ratio)
         num_to_select = population_size // 2  # Velg halvparten av populasjonen
         best_portfolios = select_best(population, fitness_scores, num_to_select)  # Velg de beste porteføljene
+        
+        # Lag den neste generasjonen
         next_generation = []
         for portfolio in best_portfolios:
             next_generation.append(portfolio)  # Behold den originale porteføljen
@@ -79,7 +100,9 @@ def evolutionary_programming(expected_returns, cov_matrix, population_size, num_
     # Finn den beste porteføljen i den siste populasjonen
     final_fitness_scores = np.array([fitness_function(p, expected_returns, cov_matrix, risk_free_rate) for p in population])
     best_portfolio = population[np.argmax(final_fitness_scores)]
-    return best_portfolio, np.max(final_fitness_scores)
+    best_sharpe_ratio = np.max(final_fitness_scores)
+
+    return best_portfolio, best_sharpe_ratio, generation_results
 
 # Definer parameterområder for testing av algoritmen
 population_sizes = [150, 200, 300]  # Ulike populasjonsstørrelser
@@ -108,18 +131,10 @@ for pop_size in population_sizes:
             print(f"Running combination {combination_counter}/{total_combinations}: pop_size={pop_size}, gen_count={gen_count}, mut_rate={mut_rate}")
 
             # Kjør den evolusjonære algoritmen med de nåværende parameterne
-            best_portfolio, sharpe_ratio = evolutionary_programming(expected_returns, cov_matrix, pop_size, gen_count, risk_free_rate, mut_rate)
+            best_portfolio, sharpe_ratio, generation_results = evolutionary_programming(expected_returns, cov_matrix, pop_size, gen_count, risk_free_rate, mut_rate)
 
-            # Lagre resultatene, inkludert generasjonsnummeret
-            for generation in range(gen_count):
-                results.append({
-                    'generation': generation + 1,  # Lagre generasjonsnummeret i andre kolonne
-                    'combination_number': combination_counter,
-                    'pop_size': pop_size,
-                    'gen_count': gen_count,
-                    'mut_rate': mut_rate,
-                    'sharpe_ratio': sharpe_ratio
-                })
+            # Lagre resultatene for hver generasjon
+            results.extend(generation_results)
 
             # Oppdater den beste Sharpe-ratioen og kombinasjonen hvis nødvendig
             if sharpe_ratio > best_sharpe:
