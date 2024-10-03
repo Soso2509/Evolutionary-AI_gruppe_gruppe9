@@ -13,3 +13,21 @@ __pycache__/
 # Ignorer systemspesifikke filer (valgfritt)
 .DS_Store  # macOS
 Thumbs.db  # Windows
+
+prob2/3.prob2_output/3.1beregn_mnd_avk.csv
+prob2/3.prob2_output/3.2beregn_kovarians_matrix.csv
+prob2/3.prob2_output/3.3bep_best_portfolio.csv
+prob2/3.prob2_output/3.3bep.csv
+prob2/3.prob2_output/3.4aep_best_portfolio.csv
+prob2/3.prob2_output/3.4aep.csv
+prob2/3.prob2_output/3.5bes_best_portfolio.csv
+prob2/3.prob2_output/3.5bes.csv
+prob2/3.prob2_output/3.6aes_best_portfolio.csv
+prob2/3.prob2_output/3.6aes.csv
+prob2/3.prob2_output/3.7m+l_best_portfolio.csv
+prob2/3.prob2_output/3.7m+l_sharpe_ratios_per_generation.csv
+prob2/3.prob2_output/3.7m+l.csv
+prob2/3.prob2_output/3.7sharpe_ratios_per_generation.csv
+prob2/3.prob2_output/3.8m,l_best_portfolio.csv
+prob2/3.prob2_output/3.8m,l_best_portfolios.csv
+prob2/3.prob2_output/3.8m,l.csv

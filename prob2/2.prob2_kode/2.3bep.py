@@ -64,7 +64,7 @@ def select_best(population, fitness_scores, num_to_select):
 def evolutionary_programming(expected_returns, cov_matrix, population_size, num_generations, risk_free_rate, mutation_rate=0.1):
     num_assets = len(expected_returns)  # Antall aksjer i porteføljen
     population = generate_population(population_size, num_assets)  # Generer initial populasjon
-    
+
     # Start evolusjonsprosessen
     for generation in range(num_generations):
         fitness_scores = np.array([fitness_function(p, expected_returns, cov_matrix, risk_free_rate) for p in population])
@@ -75,7 +75,7 @@ def evolutionary_programming(expected_returns, cov_matrix, population_size, num_
             next_generation.append(portfolio)  # Behold den originale porteføljen
             next_generation.append(mutate_portfolio(portfolio, mutation_rate))  # Legg til mutert versjon
         population = np.array(next_generation)  # Oppdater populasjonen
-    
+
     # Finn den beste porteføljen i den siste populasjonen
     final_fitness_scores = np.array([fitness_function(p, expected_returns, cov_matrix, risk_free_rate) for p in population])
     best_portfolio = population[np.argmax(final_fitness_scores)]
@@ -106,26 +106,27 @@ for pop_size in population_sizes:
     for gen_count in generation_counts:
         for mut_rate in mutation_rates:
             print(f"Running combination {combination_counter}/{total_combinations}: pop_size={pop_size}, gen_count={gen_count}, mut_rate={mut_rate}")
-            
+
             # Kjør den evolusjonære algoritmen med de nåværende parameterne
             best_portfolio, sharpe_ratio = evolutionary_programming(expected_returns, cov_matrix, pop_size, gen_count, risk_free_rate, mut_rate)
-            
-            # Lagre resultatene, inkludert porteføljevektene som en streng
-            results.append({
-                'combination_number': combination_counter,
-                'pop_size': pop_size,
-                'gen_count': gen_count,
-                'mut_rate': mut_rate,
-                'sharpe_ratio': sharpe_ratio,
-                'best_portfolio_weights': str(best_portfolio.tolist())  # Konverter porteføljevektene til en streng
-            })
-            
+
+            # Lagre resultatene, inkludert generasjonsnummeret
+            for generation in range(gen_count):
+                results.append({
+                    'generation': generation + 1,  # Lagre generasjonsnummeret i andre kolonne
+                    'combination_number': combination_counter,
+                    'pop_size': pop_size,
+                    'gen_count': gen_count,
+                    'mut_rate': mut_rate,
+                    'sharpe_ratio': sharpe_ratio
+                })
+
             # Oppdater den beste Sharpe-ratioen og kombinasjonen hvis nødvendig
             if sharpe_ratio > best_sharpe:
                 best_sharpe = sharpe_ratio
                 best_combination = (pop_size, gen_count, mut_rate)
                 best_combination_number = combination_counter
-                
+
             combination_counter += 1
 
 # Konverter resultatene til en pandas DataFrame

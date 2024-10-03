@@ -195,8 +195,8 @@ def run_advanced_ep():
     # Parameter ranges for testing
     population_sizes = [20, 50, 100]     # Population sizes to test
     generation_counts = [50, 100, 200]    # Number of generations to test
-    tournament_sizes = [2, 3, 5]           # Tournament sizes to test
-    num_elites_list = [1, 2, 5]            # Number of elites to test
+    tournament_sizes = [1]           # Tournament sizes to test
+    num_elites_list = [1]            # Number of elites to test
     initial_mutation_rates = [0.01, 0.05, 0.1]  # Initial mutation rates for testing
     alphas = [0.1, 0.3, 0.5]  # Values for alpha to test
     
@@ -231,23 +231,25 @@ def run_advanced_ep():
                                   f"initial mutation rate={init_mut_rate}, alpha={alpha}")
                             
                             # Run the algorithm with the current parameter combination
-                            best_portfolio, sharpe_ratio = advanced_evolutionary_programming(
-                                expected_returns, cov_matrix, pop_size, gen_count, risk_free_rate,
-                                tournament_size=tour_size, num_elites=num_elites
-                            )
-                            
-                            print(f"Sharpe ratio for combination {combination_counter}/{total_combinations}: {sharpe_ratio}")
-                            
-                            # Store the results in the list
-                            results.append({
-                                'combination_number': combination_counter,
-                                'pop_size': pop_size,
-                                'gen_count': gen_count,
-                                'initial_mutation_rate': init_mut_rate,
-                                'alpha': alpha,
-                                'sharpe_ratio': sharpe_ratio,
-                                'best_portfolio_weights': best_portfolio.tolist()
-                            })
+                            for generation in range(gen_count):  # Loop through each generation
+                                best_portfolio, sharpe_ratio = advanced_evolutionary_programming(
+                                    expected_returns, cov_matrix, pop_size, generation + 1, risk_free_rate,
+                                    tournament_size=tour_size, num_elites=num_elites
+                                )
+                                
+                                print(f"Sharpe ratio for generation {generation + 1}/{gen_count}, "
+                                      f"combination {combination_counter}/{total_combinations}: {sharpe_ratio}")
+                                
+                                # Store the results including generation number
+                                results.append({
+                                    'generation': generation + 1,  # Save generation number
+                                    'combination_number': combination_counter,
+                                    'pop_size': pop_size,
+                                    'gen_count': gen_count,
+                                    'initial_mutation_rate': init_mut_rate,
+                                    'alpha': alpha,
+                                    'sharpe_ratio': sharpe_ratio,
+                                })
                             
                             # Save the best combination
                             if sharpe_ratio > best_sharpe:
