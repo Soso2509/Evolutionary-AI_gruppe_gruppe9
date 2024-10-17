@@ -156,7 +156,10 @@ def plot_routes(routes, customers):
             plt.scatter(customer['coord'][0], customer['coord'][1], color='blue', label='Customer' if customer['id'] == 1 else "", s=50, zorder=2)
             plt.text(customer['coord'][0] + 0.5, customer['coord'][1] + 0.5, f"{customer['id']}", fontsize=12)
 
-    colors = ['green', 'orange', 'purple', 'cyan', 'magenta']  # Color for each vehicle route
+    colors = [
+        'green', 'orange', 'purple', 'cyan', 'magenta', 'yellow', 'black', 'brown', 'pink', 'lime', 'gray', 'navy', 'turquoise',
+        'gold', 'coral', 'darkred', 'teal', 'violet', 'olive', 'indigo'
+    ]  # Color for each vehicle route
 
     for i, route in enumerate(routes):
         for j in range(len(route) - 1):
