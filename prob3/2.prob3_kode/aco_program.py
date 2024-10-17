@@ -151,8 +151,11 @@ print("Cost of best routes:", best_cost)
 def plot_routes(routes, customers):
     plt.figure(figsize=(10, 8))
 
-    # Plot all customers
+     # Plot all customers
     for customer in customers:
+        if customer['id'] == 0:
+            plt.scatter(customer['coord'][0], customer['coord'][1], color='red', label='Depot', s=100, zorder=2)
+        else:
             plt.scatter(customer['coord'][0], customer['coord'][1], color='blue', label='Customer' if customer['id'] == 1 else "", s=50, zorder=2)
             plt.text(customer['coord'][0] + 0.5, customer['coord'][1] + 0.5, f"{customer['id']}", fontsize=12)
 
