@@ -64,87 +64,113 @@ class Particle:
         self.fitness = float('inf')  # Current fitness score
         self.non_improvement_count = 0  # Counter for tracking lack of improvement
 
-    def initialize_position(self):
+    def initialize_position(self, max_routes=25, max_attempts=100):
+        """
+        Attempts to initialize a position (set of routes) with fewer than max_routes.
+        Repeats the initialization up to max_attempts times if the number of routes exceeds max_routes.
+        """
+        attempt = 0
         position = []
-        remaining_customers = set(c['id'] for c in self.vrptw.customers if c['id'] != 0)  # Exclude depot
 
-        if PSO.first_position_array is None:
-            # Initialize the first particle's routes and save it to first_position_array.
-            current_customer = self.vrptw.depot  # Start from the depot
-            while remaining_customers:
-                route = []
-                load = 0  # Variable for the capacity which will be increasing until it's past the max capacity in every route
-                while remaining_customers:
-                    nearest_customers = self.get_nearest_customers(current_customer, remaining_customers) # While initializing it looks for a customer which is (1/x)% of the closest in the list of remaining customers
-                    if not nearest_customers:
-                        break
+        while attempt < max_attempts:
+            attempt += 1
+            position = []
+            remaining_customers = list(c['id'] for c in self.vrptw.customers if c['id'] != 0)  # Exclude depot
 
-                    customer_id = random.choice(
-                        nearest_customers)  # Chose random customer which isn't located too far away from the current customer
-                    customer = next(c for c in self.vrptw.customers if c['id'] == customer_id)
+            # Shuffle the remaining customers to ensure uniqueness in the initial order
+            random.shuffle(remaining_customers)
 
-                    if load + customer[
-                        'demand'] <= self.vrptw.capacity:  # As long as the new customer doesn't breach the max capacity, add it to the route
-                        route.append(customer_id)
-                        load += customer['demand']
-                        remaining_customers.remove(customer_id)
-                        current_customer = customer
-                    else:
-                        break  # Start on the next route if the addition of the new customer would breach the max capacity
-
-                position.append(route)  # Add the current route to the particle position
-
-            # Save the first position array (all routes of the first particle)
-            PSO.first_position_array = [route.copy() for route in position]
-        else:
-            # Initialize based on first_position_array, it select a random customer from the corresponding route in first_position_array in order to keep the routes more consistent
-            # This way the modifications done by the PSO will not be for naught due to all of the particles having completely different general area for their routes
-            for route in PSO.first_position_array:
-                # Pick a random customer from the same route in first_position_array
-                first_customer_id = random.choice(route)  # Randomly select a starting customer from this route
-                position.append([first_customer_id])  # Start the new particle's route with the chosen customer
-
-                # Remove the selected customer from remaining customers
-                if first_customer_id in remaining_customers:
-                    remaining_customers.remove(first_customer_id)
-
-                # Find ID and demand of the different customers
-                current_customer = next(c for c in self.vrptw.customers if c['id'] == first_customer_id)
-                load = next(c['demand'] for c in self.vrptw.customers if c['id'] == first_customer_id)
+            # Initialize routes for each vehicle, but try to use as few routes as possible
+            while remaining_customers:  # Keep going until all customers are assigned
+                current_route = []
+                current_load = 0
+                current_time = self.vrptw.depot['time_window'][0]  # Start at depot's ready time
+                prev_customer = self.vrptw.depot  # Start at the depot
+                available_time = None  # Track any available time gaps between customers
 
                 while remaining_customers:
-                    nearest_customers = self.get_nearest_customers(current_customer, remaining_customers)
-                    if not nearest_customers:
+                    feasible_customers = []
+                    # Find customers that can be added without violating capacity or time window
+                    for customer_id in remaining_customers:
+                        customer = next(c for c in self.vrptw.customers if c['id'] == customer_id)
+
+                        # Check capacity
+                        if current_load + customer['demand'] <= self.vrptw.capacity:
+                            travel_time = euclidean_distance(prev_customer['coord'], customer['coord'])
+                            arrival_time = current_time + travel_time
+
+                            # Check time window feasibility
+                            if arrival_time <= customer['time_window'][1]:  # Within due date
+                                feasible_customers.append((customer, travel_time))  # Save customer and distance
+
+                    # If no feasible customers can be added, start a new route
+                    if not feasible_customers:
                         break
 
-                    customer_id = random.choice(nearest_customers)
-                    customer = next(c for c in self.vrptw.customers if c['id'] == customer_id)
+                    # Sort feasible customers by distance from the current customer
+                    feasible_customers.sort(key=lambda x: x[1])  # Sort by travel_time (distance)
 
-                    if load + customer['demand'] <= self.vrptw.capacity:
-                        position[-1].append(customer_id)
-                        load += customer['demand']
-                        remaining_customers.remove(customer_id)
-                        current_customer = customer
-                    else:
-                        break
+                    # Select from the 20% closest customers
+                    num_closest = max(1, math.ceil(0.1 * len(feasible_customers)))  # Ensure at least one is chosen
+                    closest_customers = feasible_customers[:num_closest]
 
+                    # Check for available time window gaps before selecting a customer
+                    next_customer = self.find_customer_for_available_time(closest_customers, current_time,
+                                                                          available_time)
+
+                    if next_customer:
+                        # Add the selected customer to the route
+                        current_route.append(next_customer['id'])
+                        current_load += next_customer['demand']
+                        travel_time = euclidean_distance(prev_customer['coord'], next_customer['coord'])
+                        current_time += travel_time
+
+                        # Calculate available time window based on customer time window and arrival time
+                        wait_time = max(0, next_customer['time_window'][0] - current_time)
+                        current_time = max(current_time, next_customer['time_window'][0])  # Wait if we arrive early
+                        current_time += next_customer['service_time']
+
+                        # Check if there's available time between customers
+                        if wait_time > 0:
+                            available_time = (current_time - wait_time, current_time)  # Track available time gap
+                        else:
+                            available_time = None  # No available time if we had no wait time
+
+                        # Update previous customer and remove the customer from the remaining list
+                        prev_customer = next_customer
+                        remaining_customers.remove(next_customer['id'])
+
+                # Add the completed route to the list of routes
+                position.append(current_route)
+
+            # If the number of routes is less than max_routes, return the position
+            if len(position) <= max_routes:
+                print(f"Initialization successful in attempt {attempt} with {len(position)} routes.")
+                return position
+            else:
+                print(f"Attempt {attempt} generated {len(position)} routes, retrying...")
+
+        # If no solution found after max_attempts, return the best found (fallback)
+        print(f"Failed to generate a solution with fewer than {max_routes} routes after {max_attempts} attempts.")
+        print(position)
         return position
 
+    # Function to find a customer to stack into available time
+    def find_customer_for_available_time(self, closest_customers, current_time, available_time):
+        # If no available time window, return the nearest feasible customer
+        if available_time is None:
+            return random.choice(closest_customers)[0]
 
-    def get_nearest_customers(self, current_customer, remaining_customers):
-        """Find the nearest customers and return the closest (1/X)%"""
-        distances = []
-        for customer_id in remaining_customers:
-            customer = next(c for c in self.vrptw.customers if c['id'] == customer_id)
-            distance = euclidean_distance(current_customer['coord'], customer['coord'])
-            distances.append((customer_id, distance))
+        # Try to find a customer that fits within the available time window
+        for customer, travel_time in closest_customers:
+            arrival_time = current_time + travel_time
 
-        # Sort by distance and select the closest half
-        distances.sort(key=lambda x: x[1])
-        halfway_index = max(1, len(distances) // 6)  # Ensure at least one customer is selected
-        closest_half = [customer_id for customer_id, _ in distances[:halfway_index]]
+            # Check if the customer can fit into the available time window
+            if arrival_time >= available_time[0] and arrival_time + customer['service_time'] <= available_time[1]:
+                return customer
 
-        return closest_half
+        # If no customer fits, return a random one from the closest customers
+        return random.choice(closest_customers)[0]
 
     def calculate_fitness(self):
         """Calculates fitnes and give penalties on time window breaches"""
@@ -182,7 +208,7 @@ class Particle:
                     # Add a penalty for breaching the time window
                     time_window_penalty += penalty_per_violation
                     # Add a larger penalty if the breach is significant (e.g., more than 1 hour late)
-                    if arrival_time > customer['time_window'][1] + 60:  # Assuming time in minutes
+                    if arrival_time > customer['time_window'][1] + 90:  # Assuming time in minutes
                         time_window_penalty += large_late_penalty
 
                 # Update the current time after servicing the customer
@@ -195,7 +221,6 @@ class Particle:
         self.fitness = total_distance + time_window_penalty
 
         # Check for improvement and reset the non-improvement counter if fitness improves
-        # They will be killed off if they haven't imrpoved in X iterations as defined in optimize()
         if self.fitness < self.p_best_fitness:
             self.p_best_position = self.position.copy()
             self.p_best_fitness = self.fitness
@@ -220,7 +245,7 @@ class Particle:
 class PSO:
     first_position_array = None  # Shared across particles
 
-    def __init__(self, vrptw, num_particles, num_iterations, inertia_weight=0.7, cognitive_weight=0.8, social_weight=1.0):
+    def __init__(self, vrptw, num_particles, num_iterations, inertia_weight=0.7, cognitive_weight=0.6, social_weight=1.0):
         self.vrptw = vrptw
         self.num_particles = num_particles
         self.num_iterations = num_iterations
@@ -312,7 +337,7 @@ class PSO:
             # Cognitive term: Remove a percentage of personal best difference
             cognitive_diff = list(p_best_route.difference(current_route))
             remove_cognitive_size = math.floor(
-                (1 - self.cognitive_weight) * len(cognitive_diff))  # Determine how many to remove
+                (1 - (self.cognitive_weight * random.uniform(0, 1))) * len(cognitive_diff))  # Determine how many to remove
             cognitive_part = cognitive_diff  # Start with the full difference
             if remove_cognitive_size > 0:
                 remove_cognitive = random.sample(cognitive_diff, remove_cognitive_size)  # Randomly remove elements
@@ -320,7 +345,7 @@ class PSO:
 
             # Social term: Remove a percentage of global best difference
             social_diff = list(g_best_route.difference(current_route))
-            remove_social_size = math.floor((1 - self.social_weight) * len(social_diff))  # Determine how many to remove
+            remove_social_size = math.floor((1 - (self.social_weight * random.uniform(0, 1))) * len(social_diff))  # Determine how many to remove
             social_part = social_diff  # Start with the full difference
             if remove_social_size > 0:
                 remove_social = random.sample(social_diff, remove_social_size)  # Randomly remove elements
@@ -398,5 +423,5 @@ class PSO:
 customers, depot = load_data('../1.prob3_data/data.csv')
 vrptw_instance = VRPTW(customers, depot, capacity=200)
 
-pso = PSO(vrptw_instance, num_particles=50, num_iterations=2000)
+pso = PSO(vrptw_instance, num_particles=50, num_iterations=200000)
 pso.optimize()
