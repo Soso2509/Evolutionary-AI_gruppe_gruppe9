@@ -34,7 +34,7 @@ num_vehicles = 25
 
 # ACO Parameters
 num_ants = 10
-num_iterations = 200
+num_iterations = 500
 alpha = 1  # Pheromone importance
 beta = 2   # Heuristic importance (distance)
 rho = 0.6  # Evaporation rate
@@ -123,7 +123,6 @@ best_cost = float('inf')
 
 for iteration in range(num_iterations):
     all_ants_routes = []
-
     for ant in range(num_ants):
         routes = ant_solution()
         all_ants_routes.append(routes)
@@ -134,6 +133,9 @@ for iteration in range(num_iterations):
             best_cost = total_cost
             best_routes = routes
 
+        print("Total cost of route for iteration ", iteration+1," and ant nr ",ant+1, " is ", total_cost ,", best overall cost is ",best_cost)
+
+
     # Update pheromones
     pheromone *= (1 - rho)
 
@@ -143,7 +145,9 @@ for iteration in range(num_iterations):
             for i in range(len(route) - 1):
                 pheromone[route[i]][route[i+1]] += Q / total_cost
 
+
 # Output the best routes found
+print()
 print("Best routes found:", best_routes)
 print("Cost of best routes:", best_cost)
 
