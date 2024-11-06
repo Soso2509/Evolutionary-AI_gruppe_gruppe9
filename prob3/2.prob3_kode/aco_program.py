@@ -145,7 +145,7 @@ for iteration in range(num_iterations):
             best_cost = total_cost
             best_routes = routes
 
-        print("Total cost of route for iteration ", iteration+1," and ant nr ",ant+1, " is ", total_cost ,", best overall cost is ",best_cost)
+        print("Total cost of route for iteration ", iteration+1,"/",num_iterations," ant nr ",ant+1,"/",num_ants, " is ", total_cost ,", best overall cost is ",best_cost)
 
 
     # Update pheromones
