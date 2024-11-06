@@ -74,7 +74,7 @@ def route_cost(route):
         cost += distance_matrix[route[i]][route[i+1]]
     return cost
 
-# Ant Solution Construction
+# Ant Solution Construction with Route Validation
 def ant_solution():
     all_routes = []  # List of routes, one for each vehicle
     visited = set()
@@ -83,11 +83,13 @@ def ant_solution():
         route = [0]  # Start from depot (customer 0)
         vehicle_load = 0
         current_time = 0
+        valid_route = True  # Track whether the route is valid
 
         while len(visited) < num_customers - 1:  # Continue until all customers are visited
             feasible_customers = [c for c in range(1, num_customers) if c not in visited and c not in route and is_feasible(route, c, vehicle_load, current_time)]
             if not feasible_customers:
                 break  # If no more feasible customers for this vehicle, end its route
+
 
            # Probabilistic selection of next customer
             probabilities = []
@@ -101,21 +103,31 @@ def ant_solution():
 
             next_customer = np.random.choice(feasible_customers, p=probabilities)
 
+            # Calculate arrival time to the next customer
+            arrival_time = current_time + distance_matrix[route[-1]][next_customer]
+            if arrival_time > customers[next_customer]['time_window'][1]:  # Late arrival
+                valid_route = False
+                break  # Void route due to time window violation
+
             # Update route, load, and mark the customer as visited
             route.append(next_customer)
             vehicle_load += customers[next_customer]['demand']
-            current_time += distance_matrix[route[-1]][next_customer] + customers[next_customer]['service_time']
+            current_time = arrival_time + customers[next_customer]['service_time']
             visited.add(next_customer)
 
-        # Return to depot when vehicle finishes
-        route.append(0)
-        all_routes.append(route)
+        # Return to depot if the route is valid and finish it
+        if valid_route:
+            route.append(0)
+            all_routes.append(route)
+        else:
+            visited -= set(route[1:])  # Unmark customers visited in this route as they were not served in time
 
-     # If all customers are visited, no need to send another vehicle
+     # Stop if all customers are visited
         if len(visited) == num_customers - 1:
             break
 
     return all_routes
+
 
 # ACO Main Loop
 best_routes = None
