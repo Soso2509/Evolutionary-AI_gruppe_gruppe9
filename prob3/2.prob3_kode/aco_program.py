@@ -5,28 +5,28 @@ import random
 from math import sqrt
 import matplotlib.pyplot as plt
 
-# Load data from CSV
+# Load data from CSV with error handling
 def load_data(file_name):
+    if not os.path.exists(file_name):
+        raise FileNotFoundError(f"The file {file_name} was not found.")
     data = pd.read_csv(file_name)
     customers = []
-    depot = None
 
     for _, row in data.iterrows():
-            customers.append({
-                'id': row['CUST NO.'],
-                'coord': (row['XCOORD.'], row['YCOORD.']),
-                'demand': row['DEMAND'],
-                'service_time': row['SERVICE TIME'],
-                'time_window': (row['READY TIME'], row['DUE DATE'])
-            })
+        customers.append({
+            'id': row['CUST NO.'],
+            'coord': (row['XCOORD.'], row['YCOORD.']),
+            'demand': row['DEMAND'],
+            'service_time': row['SERVICE TIME'],
+            'time_window': (row['READY TIME'], row['DUE DATE'])
+        })
     return customers
 
 # Find the path for this script
 script_dir = os.path.dirname(os.path.abspath(__file__))
 
-
 # Get data from CSV
-customers= load_data(os.path.join(script_dir, '../1.prob3_data/data.csv'))
+customers = load_data(os.path.join(script_dir, '../1.prob3_data/data.csv'))
 
 num_customers = len(customers)
 vehicle_capacity = 200
@@ -34,12 +34,12 @@ num_vehicles = 25
 
 # ACO Parameters
 num_ants = 10
-num_iterations = 1000
+num_iterations = 500
 alpha = 1  # Pheromone importance
 beta = 2   # Heuristic importance (distance)
 rho = 0.6  # Evaporation rate
 Q = 100    # Pheromone constant
-
+penalty_factor = 1000  # Penalty for time window violation
 
 # Euclidean distance function
 def euclidean_distance(c1, c2):
@@ -63,16 +63,51 @@ def is_feasible(route, next_customer, vehicle_load, current_time):
     if vehicle_load + customer['demand'] > vehicle_capacity:
         return False
     arrival_time = current_time + distance_matrix[route[-1]][next_customer]
-    if arrival_time > customer['time_window'][1]:
+    if arrival_time > customer['time_window'][1]:  # Check against due date
         return False
     return True
 
-# Route cost calculation (total distance)
+# Route cost calculation with penalty for time window violation
 def route_cost(route):
     cost = 0
+    current_time = 0
     for i in range(len(route) - 1):
-        cost += distance_matrix[route[i]][route[i+1]]
+        start = route[i]
+        end = route[i + 1]
+        travel_time = distance_matrix[start][end]
+        arrival_time = current_time + travel_time
+
+        # Add distance cost
+        cost += travel_time
+
+        # Check time window constraint
+        if arrival_time > customers[end]['time_window'][1]:  # If arrival is late
+            cost += penalty_factor  # Add penalty to cost
+
+        # Update current time to arrival + service time
+        current_time = arrival_time + customers[end]['service_time']
     return cost
+
+# Count time window violations and calculate penalty cost for a set of routes
+def calculate_violations_and_penalty(routes):
+    violation_count = 0
+    penalty_cost = 0
+    for route in routes:
+        current_time = 0
+        for i in range(len(route) - 1):
+            start = route[i]
+            end = route[i + 1]
+            travel_time = distance_matrix[start][end]
+            arrival_time = current_time + travel_time
+
+            # Check if arrival is late
+            if arrival_time > customers[end]['time_window'][1]:
+                violation_count += 1
+                penalty_cost += penalty_factor
+
+            # Update current time to arrival + service time
+            current_time = arrival_time + customers[end]['service_time']
+    return violation_count, penalty_cost
 
 # Ant Solution Construction with Route Validation
 def ant_solution():
@@ -83,15 +118,16 @@ def ant_solution():
         route = [0]  # Start from depot (customer 0)
         vehicle_load = 0
         current_time = 0
-        valid_route = True  # Track whether the route is valid
 
         while len(visited) < num_customers - 1:  # Continue until all customers are visited
-            feasible_customers = [c for c in range(1, num_customers) if c not in visited and c not in route and is_feasible(route, c, vehicle_load, current_time)]
+            feasible_customers = [
+                c for c in range(1, num_customers)
+                if c not in visited and c not in route and is_feasible(route, c, vehicle_load, current_time)
+            ]
             if not feasible_customers:
                 break  # If no more feasible customers for this vehicle, end its route
 
-
-           # Probabilistic selection of next customer
+            # Probabilistic selection of next customer
             probabilities = []
             for c in feasible_customers:
                 pheromone_level = pheromone[route[-1]][c]
@@ -108,10 +144,13 @@ def ant_solution():
             next_customer = np.random.choice(feasible_customers, p=probabilities)
 
             # Calculate arrival time to the next customer
-            arrival_time = current_time + distance_matrix[route[-1]][next_customer]
-            if arrival_time > customers[next_customer]['time_window'][1]:  # Late arrival
-                valid_route = False
-                break  # Void route due to time window violation
+            travel_time = distance_matrix[route[-1]][next_customer]
+            arrival_time = current_time + travel_time
+
+            # If arrival time is earlier than the customer's ready time, wait until ready
+            ready_time = customers[next_customer]['time_window'][0]
+            if arrival_time < ready_time:
+                arrival_time = ready_time
 
             # Update route, load, and mark the customer as visited
             route.append(next_customer)
@@ -119,21 +158,17 @@ def ant_solution():
             current_time = arrival_time + customers[next_customer]['service_time']
             visited.add(next_customer)
 
-        # Return to depot if the route is valid and finish it
-        if valid_route:
-            route.append(0)
-            all_routes.append(route)
-        else:
-            visited -= set(route[1:])  # Unmark customers visited in this route as they were not served in time
+        # Return to depot when vehicle finishes
+        route.append(0)
+        all_routes.append(route)
 
-     # Stop if all customers are visited
+        # Stop if all customers are visited
         if len(visited) == num_customers - 1:
             break
 
     return all_routes
 
-
-# ACO Main Loop
+# ACO Main Loop with violation tracking
 best_routes = None
 best_cost = float('inf')
 
@@ -145,12 +180,15 @@ for iteration in range(num_iterations):
 
         # Compute total cost for this solution (sum of all vehicle routes)
         total_cost = sum(route_cost(route) for route in routes)
+
+        # Calculate violations and penalty cost
+        violation_count, penalty_cost = calculate_violations_and_penalty(routes)
+
         if total_cost < best_cost:
             best_cost = total_cost
             best_routes = routes
 
-        print("Total cost of route for iteration ", iteration+1,"/",num_iterations," ant nr ",ant+1,"/",num_ants, " is ", total_cost ,", best overall cost is ",best_cost)
-
+        print(f"Iteration {iteration + 1}/{num_iterations}, Ant {ant + 1}/{num_ants}: Total Cost: {total_cost}, Violations: {violation_count}, Penalty Cost: {penalty_cost}, Best Cost: {best_cost}")
 
     # Update pheromones
     pheromone *= (1 - rho)
@@ -161,17 +199,19 @@ for iteration in range(num_iterations):
             for i in range(len(route) - 1):
                 pheromone[route[i]][route[i+1]] += Q / total_cost
 
+# Calculate final violations and penalty cost
+violation_count, penalty_cost = calculate_violations_and_penalty(best_routes)
 
 # Output the best routes found
-print()
-print("Best routes found:", best_routes)
+print("\nBest routes found:", best_routes)
 print("Cost of best routes:", best_cost)
+print("With", violation_count, "Violations, and a Penalty Cost of", penalty_cost)
 
 # Visualization of the best routes found
 def plot_routes(routes, customers):
     plt.figure(figsize=(10, 8))
 
-     # Plot all customers
+    # Plot all customers
     for customer in customers:
         if customer['id'] == 0:
             plt.scatter(customer['coord'][0], customer['coord'][1], color='red', label='Depot', s=100, zorder=2)
@@ -180,8 +220,7 @@ def plot_routes(routes, customers):
             plt.text(customer['coord'][0] + 0.5, customer['coord'][1] + 0.5, f"{customer['id']}", fontsize=12)
 
     colors = [
-        'green', 'orange', 'purple', 'cyan', 'magenta', 'yellow', 'black', 'brown', 'pink', 'lime', 'gray', 'navy', 'turquoise',
-        'gold', 'coral', 'darkred', 'teal', 'violet', 'olive', 'indigo'
+        'green', 'orange', 'purple', 'cyan', 'magenta', 'yellow', 'black', 'brown', 'pink', 'lime', 'gray', 'navy', 'turquoise', 'gold', 'coral', 'darkred', 'teal', 'violet', 'olive', 'indigo'
     ]  # Color for each vehicle route
 
     for i, route in enumerate(routes):
