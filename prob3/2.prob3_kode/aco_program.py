@@ -34,7 +34,7 @@ num_vehicles = 25
 
 # ACO Parameters
 num_ants = 10
-num_iterations = 500
+num_iterations = 1000
 alpha = 1  # Pheromone importance
 beta = 2   # Heuristic importance (distance)
 rho = 0.6  # Evaporation rate
@@ -99,7 +99,11 @@ def ant_solution():
                 probabilities.append((pheromone_level ** alpha) * (heuristic_value ** beta))
 
             probabilities = np.array(probabilities)
-            probabilities /= probabilities.sum()
+
+            if probabilities.sum() == 0:  # Check for zero-sum to avoid division by zero
+                break  # No feasible path forward, break out of this route construction
+
+            probabilities /= probabilities.sum()  # Safe normalization now
 
             next_customer = np.random.choice(feasible_customers, p=probabilities)
 
