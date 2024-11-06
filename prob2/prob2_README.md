@@ -14,7 +14,6 @@
 
 
 
-
 ## 1. Calculate monthly return
 Will print the result to a CSV file in `/3.prob2_output` called `3.1beregn_mnd_avk.csv`
 ```bash
@@ -33,15 +32,11 @@ Will print the overall result and the best portfolio weights to CSV files in `/3
 python prob2/2.prob2_kode/2.3bep.py
 ```
 
-### Methodology
-
 ## 4. Runs Advanced Evolutionary Programming (AEP)
 Will print the overall result and the best portfolio weights to CSV files in `/3.prob2_output` called `3.4aep.csv` and `3.4aep_best_portfolio.csv`
 ```bash
 python prob2/2.prob2_kode/2.4aep.py
 ```
-
-### Methodology
 
 ## 5. Runs Basic Evolutionary Strategies (BES)
 Will print the overall result and the best portfolio weights to CSV files in `/3.prob2_output` called `3.5bes.csv` and `3.5bes_best_portfolio.csv`
@@ -49,15 +44,11 @@ Will print the overall result and the best portfolio weights to CSV files in `/3
 python prob2/2.prob2_kode/2.5bes.py
 ```
 
-### Methodology
-
 ## 6. Runs Advanced Evolutionary Strategies (AES)
 Will print the overall result and the best portfolio weights to CSV files in `/3.prob2_output` called `3.6aes.csv` and `3.6aes_best_portfolio.csv`
 ```bash
 python prob2/2.prob2_kode/2.6aes.py
 ```
-
-### Methodology
 
 ## 7. Runs (μ + λ) Evolutionary Strategies
 Will print the overall result and the best portfolio weights to CSV files in `/3.prob2_output` called `3.7m+l.csv` and `3.7m+l_best_portfolio.csv`
@@ -65,15 +56,11 @@ Will print the overall result and the best portfolio weights to CSV files in `/3
 python prob2/2.prob2_kode/2.7m+l.py
 ```
 
-### Methodology
-
 ## 8. Runs (μ, λ) Evolutionary Strategies
 Will print the overall result and the best portfolio weights to CSV files in `/3.prob2_output` called `3.8m,l.csv` and `3.8m,l_best_portfolio.csv`
 ```bash
 python prob2/2.prob2_kode/2.8m,l.py
 ```
-
-### Methodology
 
 ## Tables of the CSV files
 ### Step 1: Generate HTML file with tables of the CSV files
