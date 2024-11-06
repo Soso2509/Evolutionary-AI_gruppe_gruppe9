@@ -228,3 +228,27 @@ Følg disse trinnene for å slå sammen endringene fra en vilkårlig gren inn i 
    ```bash
    git push origin main
    ```
+
+## Some other useful git stuff
+### Process of making changes
+1. `git status` _See if changes done locally_
+2. `git pull` _Retrieving changes from remote_
+3. _Make changes_
+4. `git add <file1> <file2> ...` _adds file/changes to ones tracked by git_\
+OR\
+`git add .` _adds all un-tracked files/changes_
+5. `git commit -m "message"` _commit all files and adds a message in terminal (can also be added in editor)_
+6. `git push` _Pushes all changes committed til remote_
+
+### Branches
+`git branch <new-branch-name>` _Creates a new local branch_, Remember this branch is local and is not able to be seen or interacted with until you push it to remote
+
+`git branch` _Shows list of branches, the one with a * is the branch you are currently "standing" in_
+
+`git checkout <branch or commit>` _Can be uses to "switch" to previous commits or switch branches_
+
+`git switch <branch>` _To switch between branches_
+
+`git push -u origin <branch>` _Pushes branch to remote_
+
+`git merge <branch>` _Merges changes from another branch into the branch you're in_
