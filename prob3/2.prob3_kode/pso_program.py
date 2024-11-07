@@ -211,7 +211,10 @@ class Particle:
         total_distance = self.calculate_total_distance()
 
         # Calculate total time window breaches
-        total_breaches = sum(self.check_time_constraints(route) for route in self.position)
+        total_breaches = 0
+        for route in self.position:
+            total_breaches = self.check_time_constraints(route) + total_breaches
+        #print(f"{self.position}\nTotal breaches: {total_breaches}\n")
 
         # Calculate fitness as total distance plus penalties for breaches
         self.fitness = total_distance + (total_breaches * PENALTY_PER_BREACH)
@@ -225,8 +228,6 @@ class Particle:
             self.non_improvement_count += 1  # Increment the counter if no improvement
 
         return total_distance, self.fitness  # Return both total distance and fitness
-
-        # Check for time window violations in a route (no changes from the previous version)
 
     def check_time_constraints(self, route):
         """
@@ -244,6 +245,7 @@ class Particle:
 
             # Calculate travel time to this customer
             travel_time = euclidean_distance(prev_node['coord'], customer['coord'])
+            #print(f"From {prev_node['id']} to {customer_id}: {travel_time}")
             arrival_time = current_time + travel_time  # Arrival time at the customer
 
             # Handle arrival time adjustments
@@ -255,10 +257,12 @@ class Particle:
                 breaches += 1
                 # Update current time to account for service time even if late
                 current_time = arrival_time + customer['service_time']
-            else:
+                #print(f"Arrival: {arrival_time}, Time window: {customer['time_window'][0]}-{customer['time_window'][1]}")
+            elif arrival_time >= customer['time_window'][0] and arrival_time <= customer['time_window'][1]:
                 # On-time arrival; add service time
                 current_time = arrival_time + customer['service_time']
-
+            else:
+                print("Neither on time, too late or too early")
             # Move to the next customer, setting this one as the previous node
             prev_node = customer
 
@@ -299,12 +303,14 @@ class PSO:
         self.particles = [Particle(vrptw, cognitive_weight, social_weight) for _ in range(num_particles)]
 
     def optimize(self):
-        global_best_particle_idx = None  # To track the global best particle's index
+        self.g_best_position = None  # Store the global best position directly
+        self.g_best_fitness = float('inf')  # Initialize the global best fitness
+        self.g_best_distance = float('inf')  # Initialize the global best distance
 
         for iteration in range(self.num_iterations):
             improvement = False  # Track if there's any improvement in this iteration
 
-            for i, particle in enumerate(self.particles):
+            for particle in self.particles:
                 # Sort each route by the time window before fitness evaluation
                 for route in particle.position:
                     self.vrptw.sort_route_by_time_window(route)
@@ -312,14 +318,14 @@ class PSO:
                 # Calculate fitness after sorting
                 total_distance, fitness = particle.calculate_fitness()
 
-                # Initialize or update the global best position
+                # Check if this particle's position is the new global best
                 if self.g_best_position is None or fitness < self.g_best_fitness:
-                    self.g_best_position = particle.position.copy()  # Ensure it's a copy
+                    # Save the best routes, fitness score, and total distance
+                    self.g_best_position = [route.copy() for route in particle.position]
                     self.g_best_fitness = fitness
-                    self.g_best_distance = total_distance  # Track the best distance
-                    global_best_particle_idx = i  # Update the index of the global best particle
-                    self.iterations_without_improvement = 0  # Reset counter when a new global best is found
-                    improvement = True  # Mark improvement
+                    self.g_best_distance = total_distance
+                    self.iterations_without_improvement = 0  # Reset counter for improvement
+                    improvement = True
 
             if not improvement:
                 self.iterations_without_improvement += 1  # Increment the counter if no improvement
@@ -327,18 +333,22 @@ class PSO:
                 # Reset cognitive and social weights for all particles when improvement is found
                 self.reset_weights_for_all_particles()
 
-            # Adjust cognitive and social weights for all particles if no improvement in 100 iterations
-            if self.iterations_without_improvement > 30:
+            # Adjust cognitive and social weights for all particles if no improvement in 30 iterations
+            if self.iterations_without_improvement > 70:
                 self.adjust_weights_for_stagnation()
 
             # Print best fitness and distance for this iteration
-            print(f"Iteration {iteration}: Best Distance = {self.g_best_distance:.2f}, Best Fitness = {self.g_best_fitness:.2f}")
+            print(
+                f"Iteration {iteration}: Best Distance = {self.g_best_distance:.2f}, Best Fitness = {self.g_best_fitness:.2f}")
 
-            # Kill and replace particles after 400 iterations of no improvement
-            for i, particle in enumerate(self.particles):
-                if i != global_best_particle_idx and particle.non_improvement_count >= 50:
-                    print(f"Killing particle {i} due to no improvement after 400 iterations.")
-                    self.particles[i] = Particle(self.vrptw, self.cognitive_weight_initial, self.social_weight_initial)  # Replace with a new particle
+            # Kill and replace particles after a set number of iterations without improvement
+            kill_threshold = 120
+            for particle in self.particles:
+                if particle.non_improvement_count >= kill_threshold:
+                    print(f"Killing and replacing particle due to no improvement after {kill_threshold} iterations.")
+                    # Replace with a new particle
+                    self.particles[self.particles.index(particle)] = Particle(self.vrptw, self.cognitive_weight_initial,
+                                                                              self.social_weight_initial)
 
                 # Update velocity and position safely
                 self.update_velocity(particle)
@@ -427,8 +437,23 @@ class PSO:
                 longest_route_index = i
         return longest_route_index
 
+    def print_best_solution(self):
+        print("\nBest Position (Routes) with Sorted Time Windows:")
+        sorted_best_position = []
+
+        # Sort each route by time window for a clear view of the schedule
+        for route in self.g_best_position:
+            sorted_route = route.copy()
+            self.vrptw.sort_route_by_time_window(sorted_route)  # Sort route by time window
+            sorted_best_position.append(sorted_route)
+
+        # Display each sorted route
+        for i, route in enumerate(sorted_best_position):
+            print(f"Vehicle {i + 1} Route (sorted by time): {route}")
+
+        print(f"Best Fitness: {self.g_best_fitness}")
+
     def plot_best_solution(self):
-        """Plots up to the first 10 routes of the best particle (global best solution) on a 2D plane."""
         depot_coord = self.vrptw.depot['coord']
 
         # Set up the plot
@@ -459,7 +484,7 @@ class PSO:
         # Add labels and legend
         plt.xlabel('X Coordinate')
         plt.ylabel('Y Coordinate')
-        plt.title('Best Routes in VRPTW Solution (Showing up to 10 routes)')
+        plt.title('Best Routes in VRPTW Solution')
         plt.legend()
         plt.grid(True)
         plt.show()
@@ -501,36 +526,6 @@ class PSO:
         # Ensure no customer appears in multiple routes after update
         self.remove_duplicates(particle)
 
-    def check_time_constraints(self, route):
-        current_time = 0
-        breaches = 0
-        prev_node = self.vrptw.depot  # Start from depot
-
-        for customer_id in route:
-            customer = next(c for c in self.vrptw.customers if c['id'] == customer_id)
-            travel_time = euclidean_distance(prev_node['coord'], customer['coord'])
-            arrival_time = current_time + travel_time
-
-            # Check if arrival is within the time window
-            if arrival_time < customer['time_window'][0]:
-                # If arrival is too early, wait until ready
-                current_time = customer['time_window'][0] + customer['service_time']
-            elif arrival_time > customer['time_window'][1]:
-                # Arrival after due date, mark a breach
-                breaches += 1
-                current_time = arrival_time + customer['service_time']
-            else:
-                # No breach, proceed as usual
-                current_time = arrival_time + customer['service_time']
-
-            prev_node = customer  # Update for next iteration
-
-        # Add time to return to depot
-        return_to_depot_time = euclidean_distance(prev_node['coord'], self.vrptw.depot['coord'])
-        current_time += return_to_depot_time
-
-        return breaches
-
     def remove_duplicates(self, particle):
         """Ensure no customer appears in multiple routes."""
         seen_customers = set()
@@ -543,23 +538,6 @@ class PSO:
             # Update the route with only unique customers
             route.clear()
             route.extend(unique_route)
-
-    def print_best_solution(self):
-        print("\nBest Position (Routes) with Sorted Time Windows:")
-        sorted_best_position = []
-
-        # Sort each route by time window for a clear view of the schedule
-        for route in self.g_best_position:
-            sorted_route = route.copy()
-            self.vrptw.sort_route_by_time_window(sorted_route)  # Sort route by time window
-            sorted_best_position.append(sorted_route)
-
-        # Display each sorted route
-        for i, route in enumerate(sorted_best_position):
-            print(f"Vehicle {i + 1} Route (sorted by time): {route}")
-
-        print(f"Best Fitness: {self.g_best_fitness}")
-
 
 # Main execution
 customers, depot = load_data('../1.prob3_data/data.csv')
