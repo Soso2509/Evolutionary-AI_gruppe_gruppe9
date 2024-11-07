@@ -5,10 +5,13 @@ import math
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import matplotlib.colors as mcolors
+import os 
 
 # Load data from CSV
 def load_data(file_name):
-    data = pd.read_csv(file_name)
+    # Using os.path.join to create a path that works across different operating systems
+    data_path = os.path.join(os.path.dirname(__file__), file_name)
+    data = pd.read_csv(data_path)
     customers = []
     depot = None
 
