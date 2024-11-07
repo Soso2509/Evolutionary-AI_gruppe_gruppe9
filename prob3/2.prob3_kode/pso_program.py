@@ -131,11 +131,11 @@ class Particle:
                     else:
                         break
 
-        # Calculate fitness for initial routes to determine the highest fitness route
-        highest_fitness_route = max(position, key=lambda route: self.calculate_route_distance(route))
 
         # Add two extra routes based on highest fitness route, limited to 5 customers each
         for _ in range(3):
+            # Calculate fitness for initial routes to determine the highest fitness route
+            highest_fitness_route = max(position, key=lambda route: self.calculate_route_distance(route))
             if highest_fitness_route:
                 new_route = []
                 # Select a random starting customer from the highest fitness route
@@ -414,8 +414,11 @@ class PSO:
                 extra_customers = random.sample(list(current_route), min(extra_removals, len(current_route)))
                 cognitive_part.extend(extra_customers)  # Add these extra customers to the cognitive part
 
-            # Inertia: Keep the same as before
-            inertia_part = particle.velocity[i] if particle.velocity else []
+            # Inertia: Take a random 60% of the current velocity
+            if particle.velocity:
+                inertia_part = random.sample(particle.velocity[i], int(0.7 * len(particle.velocity[i])))
+            else:
+                inertia_part = []
 
             # Combine the components into new velocity
             new_velocity.append(list(set(inertia_part + cognitive_part + social_part)))
@@ -500,7 +503,7 @@ class PSO:
                 continue  # Skip if no suggestions in this route
 
             # How many of the suggested changes from the velocity will be used
-            num_changes = math.ceil(0.7 * len(velocity_suggestions))
+            num_changes = math.ceil(1.0 * len(velocity_suggestions))
 
             # Select a random subset of the suggested changes
             selected_changes = random.sample(velocity_suggestions, num_changes)
@@ -543,5 +546,5 @@ class PSO:
 customers, depot = load_data('../1.prob3_data/data.csv')
 vrptw_instance = VRPTW(customers, depot, capacity=200)
 
-pso = PSO(vrptw_instance, num_particles=50, num_iterations=500)
+pso = PSO(vrptw_instance, num_particles=50, num_iterations=1000)
 pso.optimize()
