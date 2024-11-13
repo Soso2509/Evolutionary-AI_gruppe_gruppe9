@@ -14,7 +14,8 @@ python .\prob3\2.prob3_kode\aco_program.py
 ```
 
 ## 2. Run Particle Swarm Optimization (PSO)
-
+Will print the best found vehicle routes in the terminal and the total cost of it.
+Also shows a visualisation of the routes taken by each vehicle.
 ```bash
 python .\prob3\2.prob3_kode\pso_program.py
 ```
