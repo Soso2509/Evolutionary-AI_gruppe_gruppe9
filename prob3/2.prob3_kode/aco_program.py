@@ -73,50 +73,35 @@ def is_feasible(route, next_customer, vehicle_load, current_time):
         return False
     return True
 
-# Function the calculates the total cost of travelling along a given route, with extra cost added if time-window is violated
-def route_cost(route):
+# Function the calculates the total cost of travelling along a given route, with extra cost added if time-window is violated, also keeps count of nr of violations and cost of penalties
+def routes_cost(routes):
     cost = 0
-    current_time = 0
 
-    for i in range(len(route) - 1): # For leg of the route
-        start = route[i]
-        end = route[i + 1]
-
-        # Calculate the travel-time between current customer (start) and next (end), and what time the vehicle will arrive
-        travel_time = distance_matrix[start][end]
-        arrival_time = current_time + travel_time
-
-        # Add travel-time to the cost of the route
-        cost += travel_time
-
-        # Once again check time window constraint
-        if arrival_time > customers[end]['time_window'][1]:
-            cost += penalty_factor  # If violation add penalty to cost
-
-        # Update current time to arrival + service time
-        current_time = arrival_time + customers[end]['service_time']
-    return cost
-
-# Function to calculate the amount of time-window violations and the total penalty cost for a set of routes
-def calculate_violations_and_penalty(routes):
     violation_count = 0
     penalty_cost = 0
+
     for route in routes:
         current_time = 0
-        for i in range(len(route) - 1):
+        for i in range(len(route) - 1): # For leg of the route
             start = route[i]
             end = route[i + 1]
+
+            # Calculate the travel-time between current customer (start) and next (end), and what time the vehicle will arrive
             travel_time = distance_matrix[start][end]
             arrival_time = current_time + travel_time
 
-            # Check if arrival is late
+            # Add travel-time to the cost of the route
+            cost += travel_time
+
+            # Once again check time window constraint
             if arrival_time > customers[end]['time_window'][1]:
+                cost += penalty_factor  # If violation add penalty to cost
                 violation_count += 1
                 penalty_cost += penalty_factor
 
             # Update current time to arrival + service time
             current_time = arrival_time + customers[end]['service_time']
-    return violation_count, penalty_cost
+    return cost, violation_count, penalty_cost
 
 # Function that uses ACO to construct routes for multiple vehicles
 def ant_solution():
@@ -193,10 +178,10 @@ for iteration in range(num_iterations):
         all_ants_routes.append(routes)
 
         # Compute total cost for this solution (sum of all vehicle routes)
-        total_cost = sum(route_cost(route) for route in routes)
+        total_cost = routes_cost(routes)[0]
 
         # Calculate violations and penalty cost
-        violation_count, penalty_cost = calculate_violations_and_penalty(routes)
+        _,violation_count, penalty_cost = routes_cost(routes)
 
         # If this ants solution is better than the previous overall best, update the overall best route and its cost
         if total_cost < best_cost:
@@ -212,13 +197,13 @@ for iteration in range(num_iterations):
     # For each route in ant-routes adjust pheromone levels
     for routes in all_ants_routes:
         # Recalculate total cost of each route to proportionally adjust pheromone levels
-        total_cost = sum(route_cost(route) for route in routes)
+        total_cost = routes_cost(routes)[0]
         for route in routes:
             for i in range(len(route) - 1):
                 pheromone[route[i]][route[i+1]] += Q / total_cost
 
 # Calculate final violations and penalty cost
-violation_count, penalty_cost = calculate_violations_and_penalty(best_routes)
+_,violation_count, penalty_cost = routes_cost(best_routes)
 
 # Print the best routes found
 print("\nBest routes found:", best_routes)

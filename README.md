@@ -5,8 +5,21 @@ Before you start working on the project, make sure you have the following instal
 - Your preferred code editor, like [Visual Studio Code](https://code.visualstudio.com/)
 - [Git](https://git-scm.com/downloads) for version control
 
+### Dependencies needed to run code
+Found in "requirements.txt" file
+- dsd
+
 ## Overview
-- []()
+- [Cloning the project](#cloning-the-code)
+- [Setup Virtual Environment](#setup-of-virtual-environment)
+    - [Activate Environment](#step-2-activating-the-environment)
+    - [Install Dependencies](#step-3-install-dependencies)
+- [Running code for different problems](#running-code-for-the-different-tasks-in-the-portfolio)
+    - [Problem 2](./prob2/prob2_README.md)
+    - [Problem 3](./prob3/prob3_README.md)
+    - [Problem 4]()
+- [Update dependencies](#updating-the-dependencies)
+- [Deactivate Environment](#deactivating-the-environment)
 
 ## Cloning the code
 ### Step 1: Clone the project
