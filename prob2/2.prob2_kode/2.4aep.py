@@ -169,7 +169,6 @@ def advanced_evolutionary_programming(
         ])
 
         best_sharpe_in_gen = np.max(fitness_scores)
-        best_sharpe_per_generation.append(best_sharpe_in_gen)
 
         # Elitism: Get the elite individuals to carry over to the next generation
         elites = get_elites(population, fitness_scores, num_elites)
@@ -194,7 +193,7 @@ def advanced_evolutionary_programming(
     best_individual = population[best_idx]
 
     # Return the best portfolio's weights and Sharpe ratio
-    return best_individual['weights'], final_fitness_scores[best_idx], best_sharpe_per_generation
+    return best_individual['weights'], final_fitness_scores[best_idx], best_sharpe_in_gen
 
 
 # Main function to run the advanced EP algorithm
@@ -212,8 +211,7 @@ def run_advanced_ep():
         len(generation_counts) *
         len(tournament_sizes) *
         len(num_elites_list) *
-        len(initial_mutation_rates) *
-        len(alphas)
+        len(initial_mutation_rates)
     )
     print(f"Total number of combinations to test: {total_combinations}")
 
@@ -233,7 +231,7 @@ def run_advanced_ep():
                         print(f"Running combination {combination_counter}/{total_combinations}: "
                                 f"population size={pop_size}, generations={gen_count}, "
                                 f"tournament size={tour_size}, number of elites={num_elites}, "
-                                f"initial mutation rate={init_mut_rate}, alpha={alpha}")
+                                f"initial mutation rate={init_mut_rate}")
 
                         # Run the algorithm with the current parameter combination
                         for generation in range(gen_count):  # Loop through each generation
@@ -252,14 +250,13 @@ def run_advanced_ep():
                                 'pop_size': pop_size,
                                 'gen_count': gen_count,
                                 'initial_mutation_rate': init_mut_rate,
-                                'alpha': alpha,
                                 'sharpe_ratio': best_sharpe_per_generation,
                             })
 
                         # Save the best combination
                         if best_sharpe_per_generation > best_sharpe:
                             best_sharpe = best_sharpe_per_generation
-                            best_combination = (pop_size, gen_count, tour_size, num_elites, init_mut_rate, alpha)
+                            best_combination = (pop_size, gen_count, tour_size, num_elites, init_mut_rate)
                             best_portfolio_overall = best_portfolio
                             best_combination_number = combination_counter
 
