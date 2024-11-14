@@ -3,6 +3,12 @@
 
 [Link back to main README](../README.md)
 
+**Dependecies to run code**\
+(*If installed `requirements.txt` they are already installed*)
+- pandas
+- numpy
+- matplotlib
+
 ## Overview
 1. [Calculating monthly returns](#1-calculate-monthly-return)
 2. [Calculate the covariance matrix](#2-calculate-the-covariance-matrix)

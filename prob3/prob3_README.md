@@ -3,6 +3,12 @@
 
 [Link back to main README](../README.md)
 
+**Dependecies to run code**\
+(*If installed `requirements.txt` they are already installed*)
+- pandas
+- numpy
+- matplotlib
+
 ## Overview
 0. [Dataset info](#information-regarding-data-set)
 1. [Ant Colony Optimization](#1-run-ant-colony-optimization-aco)

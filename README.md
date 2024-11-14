@@ -6,8 +6,9 @@ Before you start working on the project, make sure you have the following instal
 - [Git](https://git-scm.com/downloads) for version control
 
 ### Dependencies needed to run code
-Found in "requirements.txt" file
-- dsd
+Found in "requirements.txt" file\
+Spesific list found in each [problems README](#running-code-for-the-different-tasks-in-the-portfolio)
+
 
 ## Overview
 - [Cloning the project](#cloning-the-code)
@@ -17,7 +18,7 @@ Found in "requirements.txt" file
 - [Running code for different problems](#running-code-for-the-different-tasks-in-the-portfolio)
     - [Problem 2](./prob2/prob2_README.md)
     - [Problem 3](./prob3/prob3_README.md)
-    - [Problem 4]()
+    - [Problem 4](./prob4/prob4_README.md)
 - [Update dependencies](#updating-the-dependencies)
 - [Deactivate Environment](#deactivating-the-environment)
 
@@ -73,6 +74,7 @@ When the environment is up and running, the code can be run\
 Each problem has its own Markdown file with the terminal commands
 - [Problem 2](./prob2/prob2_README.md)
 - [Problem 3](./prob3/prob3_README.md)
+- [Problem 4](./prob4/prob4_README.md)
 
 ## Updating the dependencies
 *Make sure you are in the root of the project because that is where `requirements.txt` is located*\
