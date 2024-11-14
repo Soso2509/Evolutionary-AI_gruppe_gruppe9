@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 
 # Define the path to the CSV file (update this path as needed)
 script_dir = os.path.dirname(os.path.abspath(__file__))
-results_file = os.path.join(script_dir, '../3.prob2_output/3.3bep.csv')
+results_file = os.path.join(script_dir, '../3.prob2_output/3.4aep.csv')
 
 # Load the results CSV file into a pandas DataFrame
 results_df = pd.read_csv(results_file)
@@ -83,7 +83,7 @@ if 'generation' in results_df.columns:
 plot_best_combination(results_df)
 
 # Load the best portfolio weights from the CSV file
-best_portfolio_file = os.path.join(script_dir, '../3.prob2_output/3.3bep_best_portfolio.csv')
+best_portfolio_file = os.path.join(script_dir, '../3.prob2_output/3.4aep_best_portfolio.csv')
 best_portfolio_df = pd.read_csv(best_portfolio_file)
 
 # Plot the best portfolio weights
