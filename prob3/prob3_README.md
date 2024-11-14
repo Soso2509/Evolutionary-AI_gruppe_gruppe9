@@ -1,6 +1,8 @@
 # Running code from Problem 3
 **Make sure you are in the root folder `\Evolutionary-AI_gruppe_gruppe9`**
 
+[Link back to main README](../README.md)
+
 ## Overview
 0. [Dataset info](#information-regarding-data-set)
 1. [Ant Colony Optimization](#1-run-ant-colony-optimization-aco)

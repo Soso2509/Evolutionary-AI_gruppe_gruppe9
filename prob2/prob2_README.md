@@ -1,6 +1,8 @@
 # Running code from Problem 2
 **Make sure you are in the root folder `\Evolutionary-AI_gruppe_gruppe9`**
 
+[Link back to main README](../README.md)
+
 ## Overview
 1. [Calculating monthly returns](#1-calculate-monthly-return)
 2. [Calculate the covariance matrix](#2-calculate-the-covariance-matrix)
@@ -11,8 +13,6 @@
 7. [(μ + λ) Evolutionary Strategies](#7-runs-μ--λ-evolutionary-strategies)
 8. [(μ, λ) Evolutionary Strategies](#8-runs-μ-λ-evolutionary-strategies)
 - [HTML file with tables from CSV](#tables-of-the-csv-files)
-
-
 
 ## 1. Calculate monthly return
 Will print the result to a CSV file in `/3.prob2_output` called `3.1beregn_mnd_avk.csv`
