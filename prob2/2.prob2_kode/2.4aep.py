@@ -15,14 +15,12 @@ num_assets = len(expected_returns)  # Total number of assets
 cov_matrix = pd.read_csv(cov_matrix_file, index_col=0).values  # Covariance matrix for assets
 risk_free_rate = 0.02 / 12  # Monthly risk-free rate
 
-
 # Calculate portfolio performance in terms of expected return and standard deviation
 def portfolio_performance(weights, expected_returns, cov_matrix):
     expected_return = np.dot(weights, expected_returns)  # Weighted return
     portfolio_variance = np.dot(weights.T, np.dot(cov_matrix, weights))  # Portfolio variance
     portfolio_stddev = np.sqrt(portfolio_variance)  # Portfolio risk (std deviation)
     return expected_return, portfolio_stddev
-
 
 # Fitness function to calculate Sharpe ratio for a given portfolio
 def fitness_function(weights, expected_returns, cov_matrix, risk_free_rate):
@@ -32,7 +30,6 @@ def fitness_function(weights, expected_returns, cov_matrix, risk_free_rate):
     sharpe_ratio = (expected_return - risk_free_rate) / portfolio_stddev  # Sharpe ratio calculation
     return sharpe_ratio
 
-
 # Generate an individual portfolio with random weights and initial mutation rates (sigma)
 def generate_portfolio(num_assets):
     weights = np.random.random(num_assets)
@@ -40,14 +37,20 @@ def generate_portfolio(num_assets):
     sigma = np.random.uniform(0.05, 0.2, num_assets)  # Initial mutation rates for each asset
     return {'weights': weights, 'sigma': sigma}
 
-
 # Generate an initial population of portfolios
 def generate_population(pop_size, num_assets):
     return [generate_portfolio(num_assets) for _ in range(pop_size)]
 
+# Adjust mutation rate based on fitness improvement
+def adapt_sigma(sigma, improvement, factor_up=1.10, factor_down=0.92):
+    if improvement > 0:  # Increase sigma if fitness improved
+        sigma *= factor_up
+    else:  # Decrease sigma if fitness did not improve
+        sigma *= factor_down
+    return np.clip(sigma, 1e-6, 1)  # Ensure sigma stays within reasonable bounds
 
-# Self-adaptive mutation function to modify weights and sigma (mutation rate) for an individual
-def mutate_portfolio(individual):
+# Self-adaptive mutation function with fitness-based sigma adaptation
+def mutate_portfolio(individual, previous_fitness, expected_returns, cov_matrix, risk_free_rate):
     weights = individual['weights']
     sigma = individual['sigma']
     num_assets = len(weights)
@@ -58,35 +61,50 @@ def mutate_portfolio(individual):
 
     # Update sigma values with self-adaptive mutation strategy
     sigma_prime = sigma * np.exp(tau_prime * np.random.normal() + tau * np.random.normal(size=num_assets))
-    sigma_prime = np.clip(sigma_prime, 1e-6, 1)  # Bound sigma to avoid zero or excessively large values
+    sigma_prime = np.clip(sigma_prime, 1e-6, 1)
 
-    # Mutate weights using the new sigma values
+    # Mutate weights using the updated sigma values
     weights_prime = weights + sigma_prime * np.random.normal(size=num_assets)
-    weights_prime = np.clip(weights_prime, 0, 1)  # Bound weights between 0 and 1
+    weights_prime = np.clip(weights_prime, 0, 1)
     if np.sum(weights_prime) == 0:
-        weights_prime = generate_portfolio(num_assets)['weights']  # Reinitialize weights if they sum to zero
+        weights_prime = generate_portfolio(num_assets)['weights']
     else:
-        weights_prime /= np.sum(weights_prime)  # Normalize weights to sum to 1
+        weights_prime /= np.sum(weights_prime)
 
-    return {'weights': weights_prime, 'sigma': sigma_prime}
+    # Calculate fitness of the mutated individual
+    current_fitness = fitness_function(weights_prime, expected_returns, cov_matrix, risk_free_rate)
 
+    # Adapt sigma based on improvement in fitness
+    improvement = current_fitness - previous_fitness
+    sigma_prime = adapt_sigma(sigma_prime, improvement)
+
+    # Return the mutated portfolio with updated weights, sigma, and fitness
+    return {'weights': weights_prime, 'sigma': sigma_prime, 'sharpe_ratio': current_fitness}
 
 # Tournament selection to select parents based on fitness scores
 def tournament_selection(population, fitness_scores, tournament_size):
     selected = []
     pop_size = len(population)
     for _ in range(pop_size):
-        participants = np.random.choice(pop_size, tournament_size, replace=False)  # Randomly select participants
-        participant_fitness = fitness_scores[participants]  # Fitness scores of participants
-        winner_idx = participants[np.argmax(participant_fitness)]  # Select the best individual from participants
+        # Randomly select `tournament_size` individuals from the population
+        participants = np.random.choice(pop_size, tournament_size, replace=False)
+
+        # Retrieve the fitness scores for the selected participants
+        participant_fitness = fitness_scores[participants]
+
+        # Find the index of the participant with the highest fitness
+        winner_idx = participants[np.argmax(participant_fitness)]
+
+        # Add the winner to the list of selected individuals
         selected.append(population[winner_idx])
+
     return selected
 
 
 # Main evolutionary programming algorithm
 def advanced_evolutionary_programming(
-        expected_returns, cov_matrix, population_size, num_generations,
-        risk_free_rate, tournament_size=3, num_elites=1
+    expected_returns, cov_matrix, population_size, num_generations,
+    risk_free_rate, tournament_size=3, num_elites=1
 ):
     num_assets = len(expected_returns)
     population = generate_population(population_size, num_assets)  # Initial population
@@ -114,7 +132,11 @@ def advanced_evolutionary_programming(
 
         # Select parents using tournament selection and produce offspring through mutation
         selected_parents = tournament_selection(population, fitness_scores, tournament_size)
-        offspring = [mutate_portfolio(parent) for parent in selected_parents]
+        offspring = [
+            mutate_portfolio(parent, fitness_function(parent['weights'], expected_returns, cov_matrix, risk_free_rate),
+                             expected_returns, cov_matrix, risk_free_rate)
+            for parent in selected_parents
+        ]
 
         # Form new population with elites and offspring
         population = elites + offspring[:population_size - num_elites]  # Combine elites with offspring to maintain size
@@ -135,7 +157,7 @@ def advanced_evolutionary_programming(
 def run_advanced_ep():
     population_sizes = [100, 200, 300]  # Test with various population sizes
     generation_counts = [200, 300, 500]  # Test with different generation counts
-    tournament_sizes = [1]  # Tournament sizes for parent selection
+    tournament_sizes = [30]  # Tournament sizes for parent selection
     num_elites_list = [1, 3]  # Number of elites to keep in each generation
 
     # Calculate the total number of parameter combinations to test
