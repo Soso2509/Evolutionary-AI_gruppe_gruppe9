@@ -1,4 +1,8 @@
 # Running code from Problem 4
+**Make sure you are in the root folder `\Evolutionary-AI_gruppe_gruppe9`**
+
+[Link back to main README](../README.md)
+
 ## Prerequisites to run the code
 Following is required
 - **Jupyter notebook** to read the `Taxi.ipynb` file
