@@ -16,3 +16,6 @@ Thumbs.db  # Windows
 
 # Ignoring the CSV files that we get as an output in task 2
 /prob2/3.prob2_output/*.csv
+
+# Ignore the output files from problem 4
+/prob4/3.prob4_output
