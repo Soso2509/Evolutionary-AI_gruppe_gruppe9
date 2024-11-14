@@ -5,7 +5,7 @@ import math
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import matplotlib.colors as mcolors
-import os 
+import os
 
 # Load data from CSV
 def load_data(file_name):
@@ -34,11 +34,11 @@ def load_data(file_name):
             })
     return customers, depot
 
-# Euclidean distance function
+# Euclidean distance function to find the distance between to points in a coordinate system based on X and Y
 def euclidean_distance(c1, c2):
     return np.sqrt((c1[0] - c2[0])**2 + (c1[1] - c2[1])**2)
 
-# VRPTW class handling the problem constraints
+# VRPTW class, setting up the problem for us
 class VRPTW:
     def __init__(self, customers, depot, capacity):
         self.customers = customers  # list of customers with (x, y) coordinates
@@ -55,9 +55,9 @@ class VRPTW:
         ready_time = customer['time_window'][0]  # Ready time
         return ready_time
 
-PENALTY_PER_BREACH = 1000  # Adjust this value to control the severity of penalty for each time window breach
+PENALTY_PER_BREACH = 1000  # Adjust this value to control the severity of penalty for each time window breach. We just chose 1000 to make the penalty significant
 
-# Particle class representing a solution in PSO
+# Particle class representing a solution. Also contains functions related to setting up solutions, and checking/saving status on routes and individual customers within the particle
 class Particle:
     def __init__(self, vrptw, cognitive_weight, social_weight):
         self.vrptw = vrptw
@@ -135,9 +135,9 @@ class Particle:
                         break
 
 
-        # Add two extra routes based on highest fitness route, limited to 5 customers each
+        # Add 3 extra routes which takes the straint off of the longest routes. They can only contain 5 customers
         for _ in range(3):
-            # Calculate fitness for initial routes to determine the highest fitness route
+            # Calculate distance for initial routes to determine the longest route
             highest_fitness_route = max(position, key=lambda route: self.calculate_route_distance(route))
             if highest_fitness_route:
                 new_route = []
@@ -187,8 +187,9 @@ class Particle:
             distances.append((customer_id, distance))
 
         # Sort by distance and select the closest subset
+        concentration = 20          # Variable deciding how close the next customer has to be to the current customer relative to the current pool
         distances.sort(key=lambda x: x[1])
-        halfway_index = max(1, len(distances) // 30)
+        halfway_index = max(1, len(distances) // concentration)     # Decides how many of the closest customers the current customer has as options to continue to. High concentration means fewer, but closer. Lower means not guaranteed to be very close, but more options
         closest_subset = [customer_id for customer_id, _ in distances[:halfway_index]]
 
         return closest_subset
@@ -204,7 +205,7 @@ class Particle:
         total_distance += euclidean_distance(prev_node['coord'], self.vrptw.depot['coord'])
         return total_distance
 
-
+    # Calculates particle fitness
     def calculate_fitness(self):
         # Sort each route by the time window before calculating fitness
         for route in self.position:
@@ -276,6 +277,7 @@ class Particle:
         # Return total number of breaches found in the route
         return breaches
 
+    # Calculates distance for the particle
     def calculate_total_distance(self):
         total_distance = 0
         for route in self.position:
@@ -290,7 +292,7 @@ class Particle:
 
 # PSO algorithm class
 class PSO:
-    first_position_array = None  # Shared across particles
+    first_position_array = None  # Array of routes to use for sharing across particles
 
     def __init__(self, vrptw, num_particles, num_iterations, inertia_weight=0.7, cognitive_weight=0.6, social_weight=1.0):
         self.vrptw = vrptw
@@ -337,7 +339,8 @@ class PSO:
                 self.reset_weights_for_all_particles()
 
             # Adjust cognitive and social weights for all particles if no improvement in 30 iterations
-            if self.iterations_without_improvement > 70:
+            adaptive_threshold = 70
+            if self.iterations_without_improvement > adaptive_threshold:
                 self.adjust_weights_for_stagnation()
 
             # Print best fitness and distance for this iteration
@@ -362,11 +365,11 @@ class PSO:
 
     def adjust_weights_for_stagnation(self):
         """
-        Increase cognitive weight and decrease social weight for all particles if no improvement for 100 iterations.
+        Increase cognitive weight and decrease social weight for all particles if no improvement for [adaptive_threshold] iterations.
         """
         for particle in self.particles:
-            particle.cognitive_weight = min(particle.cognitive_weight + 0.05, 1.0)  # Increase cognitive weight up to 1.5
-            particle.social_weight = max(particle.social_weight - 0.05, 0.3)  # Decrease social weight down to 0.3
+            particle.cognitive_weight = min(particle.cognitive_weight + 0.05, 1.0)  # Increase cognitive weight
+            particle.social_weight = max(particle.social_weight - 0.05, 0.3)  # Decrease social weight down
         print(f"Adjusting weights due to stagnation: Increased cognitive weight, decreased social weight.")
 
     def reset_weights_for_all_particles(self):
@@ -380,7 +383,6 @@ class PSO:
 
     def update_velocity(self, particle):
         new_velocity = []
-        longest_route_index = self.identify_longest_route(particle)  # Pass the particle to access its methods
 
         # Ensure g_best_position and particle.position have the same length
         num_routes = min(len(particle.position), len(self.g_best_position))
@@ -410,16 +412,10 @@ class PSO:
                 remove_social = random.sample(social_diff, remove_social_size)
                 social_part = [x for x in social_diff if x not in remove_social]
 
-            # Preference for moving customers out of the longest route
-            if i == longest_route_index:
-                # Increase the weight for removing customers from the longest route by adding more customers to move out
-                extra_removals = math.ceil(len(current_route) * 0.2)  # Adjust the percentage as necessary
-                extra_customers = random.sample(list(current_route), min(extra_removals, len(current_route)))
-                cognitive_part.extend(extra_customers)  # Add these extra customers to the cognitive part
-
             # Inertia: Take a random 60% of the current velocity
+            inertia_weight = 0.7
             if particle.velocity:
-                inertia_part = random.sample(particle.velocity[i], int(0.7 * len(particle.velocity[i])))
+                inertia_part = random.sample(particle.velocity[i], int(inertia_weight * len(particle.velocity[i])))
             else:
                 inertia_part = []
 
@@ -431,17 +427,6 @@ class PSO:
             new_velocity.extend(particle.position[len(self.g_best_position):])
 
         particle.velocity = new_velocity
-
-    def identify_longest_route(self, particle):
-        """Identify the index of the longest route in terms of distance."""
-        longest_distance = 0
-        longest_route_index = 0
-        for i, route in enumerate(particle.position):
-            route_distance = particle.calculate_route_distance(route)  # Use particle's method
-            if route_distance > longest_distance:
-                longest_distance = route_distance
-                longest_route_index = i
-        return longest_route_index
 
     def print_best_solution(self):
         print("\nBest Position (Routes) with Sorted Time Windows:")
@@ -505,8 +490,9 @@ class PSO:
             if not velocity_suggestions:
                 continue  # Skip if no suggestions in this route
 
-            # How many of the suggested changes from the velocity will be used
-            num_changes = math.ceil(1.0 * len(velocity_suggestions))
+            # How many of the suggested changes from the velocity will be attempted
+            changes_from_velocity = 1.0
+            num_changes = math.ceil(changes_from_velocity * len(velocity_suggestions))
 
             # Select a random subset of the suggested changes
             selected_changes = random.sample(velocity_suggestions, num_changes)
@@ -549,5 +535,5 @@ class PSO:
 customers, depot = load_data('../1.prob3_data/data.csv')
 vrptw_instance = VRPTW(customers, depot, capacity=200)
 
-pso = PSO(vrptw_instance, num_particles=50, num_iterations=1000)
+pso = PSO(vrptw_instance, num_particles=50, num_iterations=10000)
 pso.optimize()
